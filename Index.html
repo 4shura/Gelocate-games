@@ -80,16 +80,25 @@
       border-radius: 50%;
       width: 32px;
       height: 32px;
+      box-sizing: border-box;
       display: flex;
       align-items: center;
       justify-content: center;
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       animation: bounce 2s infinite;
+      transition: transform 0.2s ease-in-out;
+      cursor: pointer;
+    }
+
+    .leaflet-marker-icon:hover .numbered {
+      transform: scale(1.2);
+      animation-play-state: paused;
     }
 
     @keyframes bounce {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-5px); }
+      50% { transform: translateY(-6px); }
     }
 
     .sidebar { 
@@ -150,7 +159,7 @@
     .toast {
       position: fixed;
       bottom: 20px;
-      left: 20px;
+      right: 20px;
       background: #fef3c7;
       color: #92400e;
       padding: 15px;
@@ -174,6 +183,34 @@
       font-size: 24px;
       margin: 10px 0;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Modal for summary screen */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: none; /* Hidden by default */
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
   </style>
 </head>
@@ -211,6 +248,17 @@
 
   <div class="toast" id="toast"><div id="toastBody"></div></div>
 
+  <!-- Game Over Summary Modal -->
+  <div id="summaryModal" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Game Over!</h2>
+      <p>Your final score is:</p>
+      <h3 id="finalScore" style="font-size: 2.5em; margin: 10px 0; color: #2563eb;">0</h3>
+      <p>Your rank:</p>
+      <h4 id="finalRank" style="font-size: 1.5em; margin: 10px 0; color: #1d4ed8;">Novice Navigator</h4>
+      <button id="closeSummaryBtn">Play Again</button>
+    </div>
+  </div>
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -291,8 +339,8 @@
       return L.divIcon({
         html: `<div class="numbered">${number}</div>`,
         className: "",
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
       });
     }
 
@@ -768,7 +816,8 @@
     ];
       const gameState = {
       round: 1, maxRounds: 15, target: null, guessMarker: null, targetMarker: null,
-      totalPoints: 0, lastPoints: 0, active: false, hintShown: false
+
+      totalPoints: 0, lastPoints: 0, active: false, hintShown: false, shownHints: []
     };
 
     function updateScoreboard() {
@@ -792,13 +841,14 @@
     function startRound() {
       if (gameState.round > gameState.maxRounds) { toast("Game over — press End game to reset."); return; }
       gameState.active = true; gameState.hintShown = false; gameState.lastPoints = 0;
+      gameState.active = true; gameState.hintShown = false; gameState.lastPoints = 0; gameState.shownHints = [];
       gameState.target = PROVINCES[Math.floor(Math.random() * PROVINCES.length)];
 
       if (gameState.guessMarker) { mapGame.removeLayer(gameState.guessMarker); gameState.guessMarker = null; }
       if (gameState.targetMarker) { mapGame.removeLayer(gameState.targetMarker); gameState.targetMarker = null; }
 
       gameState.targetMarker = L.circleMarker([gameState.target.lat, gameState.target.lng], {
-        radius: 8, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0, opacity: 0
+        radius: 10, color: '#ef4444', fillColor: '#f87171', fillOpacity: 0, opacity: 0
       }).addTo(mapGame);
 
       // Do not reveal the province name before the player guesses
@@ -806,33 +856,75 @@
       document.getElementById('hintText').textContent = '';
       updateScoreboard();
     }
+
+    function showSummary() {
+      const score = gameState.totalPoints;
+      let rank = "Novice Navigator";
+      if (score > 1250) rank = "Legendary Explorer 🗺️✨";
+      else if (score > 1000) rank = "Spice Islands Sage 🌶️";
+      else if (score > 750) rank = "Nusantara Nomad ⛵";
+      else if (score > 500) rank = "Archipelago Adept 🏝️";
+      else if (score > 250) rank = "Island Hopper 🛶";
+
+      document.getElementById('finalScore').textContent = score;
+      document.getElementById('finalRank').textContent = rank;
+      document.getElementById('summaryModal').style.display = 'flex';
+    }
+
+    function resetGame() {
+      gameState.active = false;
+      document.getElementById('gameStatus').textContent = `Press “Start round” to play again.`;
+      gameState.round = 1; gameState.totalPoints = 0; gameState.lastPoints = 0; gameState.hintShown = false; gameState.shownHints = []; gameState.usedProvinces = [];
+      updateScoreboard();
+      if (gameState.guessMarker) { mapGame.removeLayer(gameState.guessMarker); gameState.guessMarker = null; }
+      if (gameState.targetMarker) { mapGame.removeLayer(gameState.targetMarker); gameState.targetMarker = null; }
+    }
+
     function endRound(dist) {
-      if (gameState.targetMarker) gameState.targetMarker.setStyle({ opacity: 1, fillOpacity: 1 });
-      let pts = 5;
-      if (dist <= 50) pts = 100; else if (dist <= 100) pts = 80; else if (dist <= 200) pts = 60; else if (dist <= 400) pts = 40; else if (dist <= 800) pts = 20;
+      const oldScore = gameState.totalPoints;
+      if (gameState.targetMarker) gameState.targetMarker.setStyle({ opacity: 1, fillOpacity: 0.7 });
+      let pts = 10; // Base points for any guess
+      if (dist <= 100) pts = 100; else if (dist <= 200) pts = 80; else if (dist <= 400) pts = 60; else if (dist <= 800) pts = 40; else if (dist <= 1200) pts = 20;
       gameState.lastPoints = pts; gameState.totalPoints += pts; updateScoreboard();
+      checkMilestones(oldScore, gameState.totalPoints);
       toast(`${FUN_FACTS[Math.floor(Math.random()*FUN_FACTS.length)]} (Distance ${dist.toFixed(0)} km, +${pts} pts)`);
-      gameState.round++; gameState.active = false;
-      document.getElementById('gameStatus').textContent = `Round complete. Distance: ${dist.toFixed(0)} km, +${pts} pts.`;
+      gameState.active = false;
+      if (gameState.round >= gameState.maxRounds) {
+        showSummary();
+      } else {
+        gameState.round++;
+        document.getElementById('gameStatus').textContent = `Round complete. Distance: ${dist.toFixed(0)} km, +${pts} pts.`;
+      }
+    }
+    function checkMilestones(oldScore, newScore) {
+      const milestones = [250, 500, 750, 1000, 1250];
+      for (const milestone of milestones) {
+        if (oldScore < milestone && newScore >= milestone) {
+          // Use a timeout to show the milestone toast after the round summary toast
+          setTimeout(() => {
+            toast(`🎉 MILESTONE! You've reached ${milestone} points! Keep it up! 🎉`);
+          }, 4600); // A little longer than the first toast's duration
+          break; // Show only one milestone message per round
+        }
+      }
     }
     // Guess on the game map only
     mapGame.on('click', (e) => {
       if (!gameState.active) return;
       if (gameState.guessMarker) mapGame.removeLayer(gameState.guessMarker);
-      gameState.guessMarker = L.circleMarker(e.latlng, { radius: 8, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.9 }).addTo(mapGame);
+      gameState.guessMarker = L.circleMarker(e.latlng, { radius: 10, color: '#f59e0b', fillColor: '#fbbf24', fillOpacity: 0.8 }).addTo(mapGame);
       const d = haversine(e.latlng.lat, e.latlng.lng, gameState.target.lat, gameState.target.lng);
       endRound(d);
     });
     // Game buttons
     document.getElementById('startRoundBtn').addEventListener('click', startRound);
-    document.getElementById('endGameBtn').addEventListener('click', () => {
-      gameState.active = false;
-      document.getElementById('gameStatus').textContent = `Game ended. Final score: ${gameState.totalPoints}. Press “Start round” to play again.`;
-      gameState.round = 1; gameState.totalPoints = 0; gameState.lastPoints = 0; gameState.hintShown = false;
-      updateScoreboard();
-      if (gameState.guessMarker) { mapGame.removeLayer(gameState.guessMarker); gameState.guessMarker = null; }
-      if (gameState.targetMarker) { mapGame.removeLayer(gameState.targetMarker); gameState.targetMarker = null; }
+    document.getElementById('endGameBtn').addEventListener('click', showSummary);
+
+    document.getElementById('closeSummaryBtn').addEventListener('click', () => {
+      document.getElementById('summaryModal').style.display = 'none';
+      resetGame();
     });
+
     document.getElementById('giveHintBtn').addEventListener('click', () => {
       if (!gameState.active) return;
       gameState.hintShown = true;
@@ -840,275 +932,286 @@
       let hint = "Hint: Think about island groups.";
 const hints = {
   "Aceh": [
-    "Aceh sering disebut 'Serambi Mekah' karena di sini Islam pertama kali masuk ke Indonesia. Banyak masjid indah dan tradisi unik!",
-    "Rumoh Aceh adalah rumah panggung tinggi, supaya aman dari banjir dan gempa. Seru ya?",
-    "Mie Aceh itu mi pedas dengan daging atau seafood, rasanya mantap!",
-    "Tari Saman: penarinya bergerak cepat dan kompak, seperti robot yang bisa menari bersama!",
-    "Di hutan Aceh, ada orangutan, gajah, dan bunga Rafflesia yang super besar!"
+    "Provinsi ini dikenal sebagai 'Serambi Mekah'.",
+    "Rumah adatnya adalah Rumoh Aceh, rumah panggung yang tahan gempa.",
+    "Makanan terkenalnya adalah Mie Aceh yang pedas dan berempah.",
+    "Tari Saman, dengan gerakan super cepat dan kompak, berasal dari sini.",
+    "Di sini terdapat kopi Gayo yang harum dan menjadi rumah bagi gajah Sumatra."
   ],
   "North Sumatra": [
-    "Di sini banyak suku, seperti Batak dan Nias. Mereka punya cerita dan lagu yang seru!",
-    "Rumah Bolon itu besar dan beratap melengkung, bisa dihuni banyak keluarga. Asyik buat main petak umpet!",
-    "Saksang: makanan dari daging dengan bumbu khas Batak, rasanya unik!",
-    "Tari Tortor: penari bergerak pelan dan anggun, diiringi musik gondang.",
-    "Ada Danau Toba yang luas banget, dan orangutan Sumatra yang lucu!"
+    "Provinsi ini adalah rumah bagi suku Batak, Karo, dan Nias.",
+    "Rumah Bolon adalah rumah tradisionalnya, dengan atap melengkung yang khas.",
+    "Saksang adalah makanan khasnya, dimasak dengan bumbu andaliman.",
+    "Tari Tor-tor adalah tarian sakral yang diiringi musik gondang.",
+    "Di sinilah letak Danau Toba, danau vulkanik terbesar di dunia."
   ],
   "West Sumatra": [
-    "Orang Minangkabau di sini mengikuti garis keturunan dari ibu. Mereka suka musyawarah dan damai.",
-    "Rumah Gadang atapnya mirip tanduk kerbau, keren banget!",
-    "Rendang: daging sapi dimasak lama sampai empuk dan gurih.",
-    "Tari Piring: penari menari sambil membawa piring, tapi nggak pernah jatuh!",
-    "Ada bunga Rafflesia yang super besar dan harimau Sumatra yang gagah."
+    "Masyarakat Minangkabau di sini menganut sistem matrilineal (garis keturunan ibu).",
+    "Rumah Gadang memiliki atap yang bentuknya seperti tanduk kerbau.",
+    "Rendang, makanan terkenalnya, melambangkan kesabaran dan ketekunan.",
+    "Tari Piring melambangkan rasa syukur atas hasil panen.",
+    "Bunga raksasa Rafflesia arnoldii dapat ditemukan di hutan Bukit Barisan."
   ],
   "Riau": [
-    "Riau adalah tanah Melayu, banyak pantun dan lagu indah.",
-    "Rumah Selaso Jatuh Kembar biasanya dipakai untuk kumpul-kumpul dan ngobrol bersama.",
-    "Asam Pedas Patin: ikan dengan kuah pedas segar, bikin semangat makan!",
-    "Tari Zapin: gerakannya lembut dan sopan, seperti putri dan pangeran.",
-    "Di sini banyak pohon sagu dan hewan lucu seperti macan dahan."
+    "Provinsi ini dikenal sebagai 'Tanah Melayu' yang kaya akan adat dan sastra.",
+    "Rumah adatnya, Selaso Jatuh Kembar, digunakan untuk musyawarah.",
+    "Asam Pedas Patin adalah hidangan ikan dengan kuah pedas segar khas Melayu.",
+    "Tari Zapin memiliki gerakan halus yang menggambarkan sopan santun.",
+    "Hutan gambutnya adalah habitat bagi macan dahan dan burung enggang."
   ],
   "Jambi": [
-    "Jambi dulu bagian dari kerajaan Melayu, orangnya ramah dan suka adat.",
-    "Rumah Kajang Leko: rumah panggung dengan ukiran cantik.",
-    "Gulai Tepek Ikan: ikan dengan kuah santan dan rempah, yummy!",
-    "Tari Sekapur Sirih: penari membawa sirih sebagai tanda hormat.",
-    "Ada harimau Sumatra, tapir, dan bunga anggrek yang cantik."
+    "Provinsi ini dulunya merupakan bagian dari Kerajaan Melayu.",
+    "Rumah Kajang Leko adalah rumah panggung dengan ukiran yang indah.",
+    "Gulai Tepek Ikan adalah hidangan ikan dengan kuah santan kental.",
+    "Tari Sekapur Sirih adalah tarian penyambutan tamu yang ramah.",
+    "Taman Nasional Kerinci Seblat, rumah bagi harimau Sumatra, ada di sini."
   ],
   "South Sumatra": [
-    "Dulu di sini ada Kerajaan Sriwijaya yang hebat!",
-    "Rumah Limas bertingkat lima, seperti rumah di negeri dongeng.",
-    "Pempek: makanan dari ikan dengan saus cuko yang asam dan pedas.",
-    "Tari Gending Sriwijaya: tarian megah seperti putri dan pangeran.",
-    "Ada harimau Sumatra dan buaya yang suka berjemur di rawa."
+    "Wilayah ini pernah menjadi pusat Kerajaan Sriwijaya yang agung.",
+    "Rumah Limas adalah rumah kayu bertingkat lima yang melambangkan status sosial.",
+    "Pempek, olahan ikan dengan saus cuko, adalah makanan ikoniknya.",
+    "Tari Gending Sriwijaya menggambarkan kemegahan kerajaan di masa lalu.",
+    "Fauna khasnya adalah buaya senyulong dan beruang madu."
   ],
   "Bengkulu": [
-    "Bengkulu terkenal dengan bunga Rafflesia yang super besar dan langka.",
-    "Rumah Bubungan Lima dipakai untuk musyawarah, seperti rapat keluarga.",
-    "Pendap: ikan dibungkus daun dan dimasak, rasanya unik!",
-    "Tari Andun: tarian ceria untuk anak muda.",
-    "Di sini ada kukang, trenggiling, dan rotan liar di hutan."
+    "Provinsi ini terkenal dengan bunga Rafflesia arnoldii, bunga terbesar di dunia.",
+    "Rumah Bubungan Lima adalah tempat musyawarah adat bagi masyarakat Saibatin.",
+    "Pendap adalah hidangan ikan yang dibungkus daun talas dan dikukus.",
+    "Tari Andun adalah tarian pergaulan yang ceria untuk anak muda.",
+    "Hutan tropisnya adalah rumah bagi kukang dan trenggiling."
   ],
   "Lampung": [
-    "Lampung adalah gerbang ke Pulau Jawa, banyak pantai dan kebun kopi.",
-    "Nuwo Sesat: rumah adat untuk berkumpul dan ngobrol.",
-    "Seruit: ikan goreng atau bakar dengan sambal, enak dimakan rame-rame!",
-    "Tari Sigeh Penguten: tarian untuk menyambut tamu.",
-    "Ada gajah Sumatra, penyu belimbing, dan kopi yang harum."
+    "Terletak di ujung selatan Sumatra, provinsi ini adalah gerbang menuju Pulau Jawa.",
+    "Nuwo Sesat adalah rumah pertemuan tradisional masyarakat Lampung.",
+    "Seruit, ikan bakar dengan sambal terasi, biasanya dinikmati bersama-sama.",
+    "Tari Sigeh Penguten adalah tarian penyambutan tamu yang anggun.",
+    "Taman Nasional Way Kambas, rumah bagi gajah dan badak Sumatra, ada di sini."
   ],
   "Bangka Belitung": [
-    "Di sini banyak pantai cantik dan batu granit besar, seru buat main!",
-    "Rumah Panggung Bangka tinggi supaya aman dari banjir.",
-    "Mie Bangka: mi khas pulau, rasanya gurih.",
-    "Tari Campak: tarian ceria anak muda di pesisir.",
-    "Ada pohon kelapa, ikan pari, dan penyu sisik di laut."
+    "Provinsi ini terkenal dengan pantai pasir putih dan bebatuan granit raksasa.",
+    "Rumah Panggung Bangka adalah rumah tinggi sederhana untuk menghindari banjir.",
+    "Lempah Kuning adalah sup ikan dengan kuah kuning berempah yang khas.",
+    "Tari Campak menggambarkan keceriaan para pemuda di pesisir.",
+    "Perairannya adalah rumah bagi ikan pari dan penyu sisik."
   ],
   "Riau Islands": [
-    "Riau Islands punya ribuan pulau kecil, seperti negeri dongeng!",
-    "Rumah Belah Bubung atapnya mirip perahu terbalik.",
-    "Laksa: sup mi dengan bumbu Melayu.",
-    "Tandak: tarian pergaulan yang seru.",
-    "Di lautnya ada dugong, penyu, dan terumbu karang warna-warni."
+    "Provinsi ini terdiri dari ribuan pulau kecil dan telah menjadi gerbang perdagangan maritim.",
+    "Rumah Belah Bubung memiliki atap yang menyerupai perahu terbalik.",
+    "Gonggong, sejenis siput laut, adalah makanan laut lokal yang populer.",
+    "Tari Tandak adalah tarian sosial yang ceria diiringi musik Melayu.",
+    "Perairannya adalah rumah bagi dugong dan ikan napoleon."
   ],
   "West Java": [
-    "Tanah Sunda terkenal ramah dan suka seni.",
-    "Rumah Julang Ngapak atapnya lebar seperti burung terbang.",
-    "Soto Bandung, Surabi, dan Lotek: makanan sehat dan enak.",
-    "Tari Jaipongan: gerakannya lincah dan penuh semangat.",
-    "Ada macan tutul Jawa dan elang Jawa yang gagah."
+    "Ini adalah 'Tanah Sunda', yang terkenal dengan keramahan dan kreativitasnya.",
+    "Rumah Julang Ngapak memiliki atap lebar yang menyerupai burung yang sedang terbang.",
+    "Makanan terkenalnya antara lain Nasi Liwet, Surabi, dan Lotek.",
+    "Tari Jaipongan sangat energik dengan gerakan yang lincah.",
+    "Provinsi ini adalah rumah bagi macan tutul Jawa dan elang Jawa."
   ],
   "Jakarta": [
-    "Jakarta adalah ibu kota Indonesia, ramai dan penuh warna!",
-    "Rumah Kebaya atapnya mirip lipatan kebaya, unik banget.",
-    "Kerak Telor dan Soto Betawi: makanan khas yang gurih.",
-    "Tari Topeng Betawi: lucu dan ekspresif, bikin ketawa.",
-    "Ada burung kuntul dan biawak air di sungai kota."
+    "Sebagai ibu kota negara, ini adalah pusat pemerintahan dan ekonomi.",
+    "Atap Rumah Kebaya menyerupai lipatan blus kebaya.",
+    "Kerak Telor dan Soto Betawi adalah hidangan ikonik dari budaya Betawi.",
+    "Tari Topeng Betawi menceritakan kisah hidup dengan gerakan yang lucu.",
+    "Meskipun kota besar, di sini ada hutan bakau di Pantai Indah Kapuk."
   ],
   "Central Java": [
-    "Central Java adalah pusat budaya Jawa, orangnya sopan dan suka filosofi.",
-    "Joglo: rumah dengan atap tinggi bertingkat.",
-    "Lumpia Semarang, Soto Kudus, Nasi Liwet Solo: makanan manis dan gurih.",
-    "Tari Gambyong: gerakannya lembut seperti putri.",
-    "Ada pohon jati, lutung Jawa, dan elang brontok."
+    "Provinsi ini adalah jantung budaya Jawa yang halus dan penuh filosofi.",
+    "Rumah Joglo memiliki atap bertingkat yang melambangkan status sosial.",
+    "Lumpia Semarang dan Soto Kudus adalah hidangan lokal yang terkenal.",
+    "Tari Gambyong, dengan gerakannya yang lembut, sering ditampilkan untuk menyambut tamu.",
+    "Provinsi ini terkenal dengan hutan jatinya dan merupakan rumah bagi lutung Jawa."
   ],
   "Yogyakarta": [
-    "Yogyakarta dipimpin Sultan, budayanya keren dan istimewa.",
-    "Joglo Yogyakarta punya banyak ukiran indah.",
-    "Gudeg: makanan dari nangka muda, manis dan lezat.",
-    "Tari Bedhaya: tarian keraton yang lembut dan penuh makna.",
-    "Ada pohon beringin sakral dan kijang kecil di taman."
+    "Ini adalah satu-satunya daerah istimewa di Indonesia yang masih dipimpin oleh seorang Sultan.",
+    "Rumah Joglo Yogyakarta memiliki banyak ukiran yang simbolis.",
+    "Gudeg, hidangan dari nangka muda, adalah ikon kota ini.",
+    "Tari Bedhaya adalah tarian klasik keraton yang lembut dan penuh makna spiritual.",
+    "Pohon beringin keramat di Alun-Alun adalah salah satu markah tanahnya."
   ],
   "East Java": [
-    "Di sini ada Gunung Bromo dan budaya Madura yang unik.",
-    "Joglo Pencu: rumah dengan atap tinggi, seperti istana.",
-    "Rawon: sup daging hitam dari kluwek.",
-    "Reog Ponorogo: pertunjukan topeng singa besar, keren banget!",
-    "Ada banteng Jawa dan penyu hijau di pantai."
+    "Provinsi ini memiliki budaya yang kuat dan beragam, dari Madura hingga Blambangan.",
+    "Rumah Joglo Pencu memiliki atap yang lebih tinggi dari Joglo biasa, menandakan keagungan.",
+    "Rawon adalah sup daging sapi terkenal dengan kuah hitam dari kluwek.",
+    "Reog Ponorogo adalah pertunjukan megah dengan topeng singa raksasa.",
+    "Di sini terdapat Banteng (sapi liar Jawa) dan penyu hijau di pesisir."
   ],
   "Banten": [
-    "Banten punya suku Baduy yang hidup sederhana dan dekat alam.",
-    "Rumah Baduy dibuat tanpa paku, hebat ya!",
-    "Sate Bandeng: ikan bandeng yang dihaluskan dan dibumbui.",
-    "Tari Rampak Bedug: menabuh bedug bersama-sama, seru!",
-    "Ada badak Jawa yang langka di hutan Ujung Kulon."
+    "Dulu kerajaan Islam besar, sekarang dikenal dengan pantainya dan suku Baduy.",
+    "Rumah Baduy adalah rumah sederhana yang dibangun tanpa paku.",
+    "Sate Bandeng adalah hidangan unik yang terbuat dari ikan bandeng tanpa tulang.",
+    "Tari Rampak Bedug menampilkan pukulan bedug yang kompak.",
+    "Taman Nasional Ujung Kulon, habitat terakhir badak Jawa, ada di sini."
   ],
   "Bali": [
-    "Bali adalah pulau para dewa, penuh pura dan pantai indah.",
-    "Gapura Candi Bentar: gerbang rumah yang cantik dan sakral.",
-    "Lawar dan Babi Guling: makanan khas upacara.",
-    "Tari Kecak: penari duduk melingkar sambil bersuara 'cak-cak-cak'!",
-    "Ada jalak Bali yang langka dan ikan warna-warni di laut."
+    "Dikenal sebagai 'Pulau Dewata', memadukan keindahan alam dengan spiritualitas.",
+    "Gapura Candi Bentar adalah gerbang masuk terbelah ke kompleks rumah tradisional.",
+    "Lawar dan Babi Guling adalah hidangan upacara yang terkenal.",
+    "Tari Kecak, yang menceritakan kisah Ramayana, adalah ikon budaya.",
+    "Pulau ini adalah rumah bagi jalak Bali yang langka dan terumbu karang yang hidup."
   ],
   "West Nusa Tenggara": [
-    "Di sini ada suku Sasak dan Samawa, budayanya seru!",
-    "Bale Lumbung: rumah tinggi mirip lumbung padi.",
-    "Ayam Taliwang dan Plecing Kangkung: pedas dan segar.",
-    "Tari Gandrung Lombok: tarian kebahagiaan rakyat.",
-    "Ada rusa timor dan kera ekor panjang di hutan."
+    "Dihuni oleh suku Sasak di Lombok dan suku Samawa di Sumbawa.",
+    "Bale Lumbung adalah rumah tinggi yang menyerupai lumbung padi.",
+    "Ayam Taliwang dan Plecing Kangkung adalah hidangan pedas yang terkenal.",
+    "Tari Gandrung Lombok adalah tarian sosial yang menggambarkan kebahagiaan rakyat.",
+    "Gunung Rinjani diyakini sebagai tempat tinggal dewi Dewi Anjani."
   ],
   "East Nusa Tenggara": [
-    "Wilayahnya kering, tapi punya komodo si naga purba!",
-    "Mbaru Niang: rumah kerucut tinggi dari bambu.",
-    "Se’i: daging asap yang gurih.",
-    "Tari Caci: tarian perang dengan cambuk, seru!",
-    "Ada komodo, pohon lontar, dan burung kakatua kuning."
+    "Ini adalah wilayah kering dengan budaya yang kuat dan lestari.",
+    "Mbaru Niang adalah rumah kerucut tinggi dari bambu yang ditemukan di Wae Rebo.",
+    "Se'i adalah hidangan daging asap yang dibumbui dengan rempah khas Timor.",
+    "Tari Caci adalah tarian pertarungan cambuk dari Manggarai.",
+    "Ini adalah satu-satunya tempat di dunia untuk melihat komodo di alam liar."
   ],
   "West Kalimantan": [
-    "Di sini ada garis khatulistiwa, jadi panas dan seru!",
-    "Rumah Panjang: bisa dihuni banyak orang, asyik buat main bersama.",
-    "Pengkang: nasi ketan dengan udang kering.",
-    "Tari Monong: tarian untuk tolak bala.",
-    "Ada orangutan, bekantan, dan anggrek hitam di hutan."
+    "Dikenal sebagai 'Tanah Khatulistiwa' karena garis khatulistiwa melewatinya.",
+    "Rumah Panjang adalah tempat tinggal komunal bagi komunitas Dayak.",
+    "Pengkang adalah hidangan nasi ketan dan udang kering yang dibungkus daun pisang.",
+    "Tari Monong secara tradisional digunakan untuk menolak bala.",
+    "Hutannya adalah rumah bagi orangutan, bekantan, dan anggrek hitam."
   ],
   "Central Kalimantan": [
-    "Banyak suku Dayak tinggal di sini, hutan rawa gambutnya luas.",
-    "Betang House: rumah panjang untuk keluarga besar.",
-    "Juhu Singkah: rebung rotan dimasak santan.",
-    "Tari Tambun dan Bungai: tarian pahlawan Dayak.",
-    "Ada orangutan, beruang madu, dan buaya di sungai."
+    "Wilayah ini sebagian besar dihuni oleh suku Dayak Ngaju.",
+    "Rumah Betang adalah rumah panjang dan luas untuk seluruh keluarga besar.",
+    "Juhu Singkah adalah hidangan yang terbuat dari pucuk rotan yang dimasak dengan santan.",
+    "Tari Tambun dan Bungai melambangkan keberanian para pahlawan Dayak.",
+    "Hutan rawa gambutnya adalah rumah bagi orangutan dan beruang madu."
   ],
   "South Kalimantan": [
-    "Ada pasar terapung di sungai, seru buat belanja dari perahu!",
-    "Bubungan Tinggi: rumah dengan atap lancip.",
-    "Soto Banjar: sup gurih tanpa santan.",
-    "Baksa Kembang: tarian sambutan dengan bunga.",
-    "Ada bekantan, burung rangkong, dan ikan toman di sungai."
+    "Provinsi ini terkenal dengan pasar terapungnya dan budaya Banjar yang ramah.",
+    "Rumah Bubungan Tinggi memiliki atap curam yang runcing dan banyak kamar.",
+    "Soto Banjar adalah sup gurih, kaya rempah tapi tanpa santan.",
+    "Baksa Kembang adalah tarian penyambutan dengan gerakan lembut dan bunga di tangan.",
+    "Ini adalah rumah bagi bekantan dan rangkong besar."
   ],
   "East Kalimantan": [
-    "Wilayah kaya sumber alam, banyak suku Dayak.",
-    "Lamin House: rumah panjang penuh ukiran warna-warni.",
-    "Nasi Bekepor: dimasak di atas bara api, unik!",
-    "Tari Gong: diiringi musik gong besar.",
-    "Ada pesut Mahakam, lumba-lumba air tawar yang lucu!"
+    "Daerah yang kaya sumber daya alam dan budaya suku Dayak Kenyah dan Kutai.",
+    "Rumah Lamin adalah bangunan panjang yang penuh dengan ukiran warna-warni.",
+    "Nasi Bekepor adalah nasi yang dimasak dalam panci perunggu di atas bara api.",
+    "Tari Gong ditampilkan dengan iringan gong besar.",
+    "Sungai Mahakam adalah rumah bagi lumba-lumba Irrawaddy (Pesut Mahakam) yang langka."
   ],
   "North Kalimantan": [
-    "Provinsi termuda, hutan dan sungainya masih alami.",
-    "Rumah Baloy: rumah yang ramah lingkungan.",
-    "Nasi Subut: nasi sehat dari beras, ubi, dan jagung.",
-    "Tari Jepen: tarian campuran Melayu dan Dayak.",
-    "Ada orangutan, kucing batu, dan elang laut."
+    "Provinsi termuda di Kalimantan, kaya akan hutan dan sungai.",
+    "Rumah Baloy mencerminkan keharmonisan antara manusia dan alam.",
+    "Nasi Subut adalah makanan sehat yang terbuat dari campuran nasi, ubi ungu, dan biji jagung.",
+    "Tari Magunatip dari suku Dayak Tahol menguji kelincahan kaki.",
+    "Hutan alaminya adalah rumah bagi orangutan dan kucing batu."
   ],
   "North Sulawesi": [
-    "Budaya Minahasa dan laut Bunaken yang indah.",
-    "Wale: rumah panggung dengan tangga di tengah.",
-    "Tinutuan: bubur sayur yang sehat.",
-    "Tari Kabasaran: tarian perang pemberani.",
-    "Ada tarsius bermata besar dan terumbu karang warna-warni."
+    "Pusat budaya Minahasa dan kehidupan laut yang indah di Bunaken.",
+    "Wale adalah rumah panggung dengan tangga di tengah.",
+    "Tinutuan adalah bubur yang dibuat dengan mencampurkan nasi dengan berbagai sayuran.",
+    "Tari Kabasaran adalah tarian perang tradisional dari masyarakat Minahasa.",
+    "Ini adalah rumah bagi Tarsius—primata kecil dengan mata besar."
   ],
   "Gorontalo": [
-    "Orangnya ramah dan suka musyawarah.",
-    "Dulohupa: rumah untuk rapat dan upacara.",
-    "Binte Biluhuta: sup jagung dengan ikan dan kelapa.",
-    "Tari Dana-Dana: tarian dinamis diiringi musik.",
-    "Ada burung maleo dan penyu hijau di pantai."
+    "Provinsi muda dengan tradisi yang sopan dan religius.",
+    "Rumah Dulohupa digunakan untuk pertemuan berbasis mufakat dan upacara adat.",
+    "Binte Biluhuta adalah sup jagung dengan ikan dan kelapa.",
+    "Tari Dana-Dana adalah tarian dinamis yang sering ditampilkan dalam upacara penyambutan.",
+    "Pantainya adalah tempat bersarang bagi penyu hijau."
   ],
   "Central Sulawesi": [
-    "Budaya Kaili dan Tojo Una-Una, hutan dan danau indah.",
-    "Rumah Tambi: bentuk segitiga seperti tenda.",
-    "Kaledo: sup tulang sapi asam dan gurih.",
-    "Tari Dero: tarian kebersamaan, seru buat rame-rame.",
-    "Ada anoa, babirusa, dan burung maleo di hutan."
+   "Wilayah ini memiliki budaya orang Kaili dan Tojo Una-Una.",
+    "Rumah Tambi adalah rumah segitiga di mana atapnya juga berfungsi sebagai dinding.",
+    "Kaledo adalah sup tulang sapi dengan kuah segar, asam, dan gurih.",
+    "Tari Dero adalah tarian kelompok yang menggambarkan kebersamaan.",
+    "Taman Nasional Lore Lindu adalah rumah bagi spesies langka seperti Anoa dan Babirusa."
   ],
   "South Sulawesi": [
-    "Wilayah Bugis dan Toraja, pelaut pemberani.",
-    "Tongkonan: rumah kayu beratap melengkung.",
-    "Coto Makassar: sup daging dengan kacang, gurih!",
-    "Tari Pakarena: tarian kesetiaan dan sabar.",
-    "Ada monyet buton dan burung maleo yang unik."
+    "Tanah orang Bugis dan Toraja, dengan budaya maritim dan spiritual.",
+    "Tongkonan adalah rumah kayu dengan atap melengkung yang khas dari daerah Toraja.",
+    "Coto Makassar adalah sup daging sapi kaya rasa yang disajikan dengan jeroan.",
+    "Tari Pakarena adalah tarian anggun tentang kesetiaan dan kesabaran.",
+    "Ini adalah rumah bagi monyet kra khas Sulawesi dan burung maleo."
   ],
   "West Sulawesi": [
-    "Budaya Mandar, rumah panggung Boyang.",
-    "Jepa: roti sagu khas Mandar, enak buat sarapan.",
-    "Tari Pattudu: gerakan lembut dengan kipas.",
-    "Ada durian liar, kemiri, dan burung rangkong di hutan."
+    "Provinsi muda dengan budaya Mandar yang kuat.",
+    "Boyang adalah rumah panggung tradisional orang Mandar.",
+    "Jepa adalah roti sagu khas Mandar.",
+    "Tari Pattudu ditampilkan dengan gerakan lembut menggunakan kipas.",
+    "Hutannya adalah rumah bagi pohon durian liar dan rangkong Sulawesi."
   ],
   "Southeast Sulawesi": [
-    "Orang Tolaki dan Buton suka hidup dekat laut.",
-    "Banua Tada: rumah panggung tanpa paku.",
-    "Sinonggi: makanan dari pati sagu, biasanya dimakan dengan lauk.",
-    "Tari Lulo: tarian kebersamaan, bisa ikut ramai-ramai!",
-    "Ada burung nuri merah dan penyu hijau di laut."
+    "Ini adalah provinsi orang Tolaki dan Buton dengan budaya maritim.",
+    "Banua Tada adalah rumah panggung yang dibangun tanpa menggunakan paku.",
+    "Sinonggi adalah makanan pokok yang terbuat dari pati sagu.",
+    "Tari Lulo adalah tarian kelompok yang menggambarkan kebersamaan.",
+    "Perairan Wakatobi adalah rumah bagi burung nuri merah dan penyu hijau."
   ],
   "Maluku": [
-    "Tanah Seribu Pulau, dulu terkenal dengan rempah-rempah.",
-    "Baileo: rumah panggung besar untuk acara adat.",
-    "Papeda: makanan dari sagu, kenyal dan unik.",
-    "Tari Cakalele: tarian perang penuh semangat.",
-    "Ada pala, cengkeh, ikan tuna, dan burung kakatua raja."
+    "Dikenal sebagai 'Kepulauan Rempah' dan sumber rempah-rempah dunia.",
+    "Baileo adalah rumah panggung besar tanpa dinding untuk pertemuan dan upacara.",
+    "Papeda adalah makanan pokok yang terbuat dari sagu, dengan tekstur kenyal dan lengket.",
+    "Tari Cakalele adalah tarian perang tradisional.",
+    "Provinsi ini terkenal dengan pohon pala dan cengkeh."
   ],
   "North Maluku": [
-    "Wilayah kepulauan rempah, budaya Ternate dan Tidore.",
-    "Sasadu: rumah adat suku Sahu, bentuknya unik.",
-    "Gohu Ikan: ikan mentah dengan bumbu, seperti sashimi!",
-    "Tari Soya-Soya: tarian perang melawan penjajah.",
-    "Ada burung bidadari Halmahera dan pohon pala."
+    "Sebuah wilayah kepulauan rempah-rempah dan budaya Ternate–Tidore.",
+    "Sasadu adalah rumah tradisional orang Sahu di Halmahera Barat.",
+    "Gohu Ikan adalah hidangan lokal yang mirip dengan sashimi, terbuat dari tuna mentah.",
+    "Tari Soya-Soya adalah tarian perang yang menggambarkan perjuangan melawan penjajah.",
+    "Ini adalah rumah bagi burung bidadari Halmahera dan pohon cengkeh."
   ],
   "West Papua": [
-    "Alamnya kaya, banyak suku dan budaya menarik.",
-    "Honai: rumah bulat dengan atap kerucut, seperti rumah Hobbit!",
-    "Sagu bakar: camilan tradisional dari sagu.",
-    "Tari Yospan: tarian ceria dan penuh semangat.",
-    "Ada burung cenderawasih kuning dan ikan pari manta di laut."
+    "Dikenal dengan potensi alamnya yang kaya dan budaya suku Amungme dan Kamoro.",
+    "Honai adalah rumah bundar tradisional dengan atap kerucut.",
+    "Sagu bakar adalah camilan tradisional yang terbuat dari tepung sagu dan kelapa.",
+    "Tari Yospan adalah tarian pergaulan yang energik dan ceria.",
+    "Raja Ampat, yang terkenal dengan ikan pari manta, terletak di sini."
   ],
   "Central Papua": [
-    "Wilayah pegunungan, banyak suku unik.",
-    "Honai: rumah bulat dari kayu dan jerami.",
-    "Bakar Batu: masak makanan dengan batu panas, seru banget!",
-    "Tari Musyoh: tarian untuk menenangkan arwah.",
-    "Ada kangguru pohon dan burung cenderawasih emas."
+    "Sebuah wilayah pegunungan dengan suku-suku seperti Dani dan Mee.",
+    "Honai adalah rumah bundar tradisional suku Dani.",
+    "Bakar Batu adalah metode memasak tradisional menggunakan batu panas.",
+    "Tari Musyoh dilakukan untuk menenangkan arwah orang yang meninggal secara tidak wajar.",
+    "Ini adalah rumah bagi kanguru pohon mantel emas dan anggrek alpin."
   ],
   "Highland Papua": [
-    "Daerah pegunungan tinggi, udaranya dingin.",
-    "Ebei: rumah bulat suku Dani, hangat di dalam.",
-    "Babati: makanan khas pegunungan.",
-    "Tari isosolok: tarian perang yang berani.",
-    "Ada pinus, pakis raksasa, dan burung nuri pegunungan."
+    "Daerah pegunungan dataran tinggi dengan iklim sejuk.",
+    "Ebei adalah rumah bundar suku Dani yang melambangkan persatuan.",
+    "Ikan asar adalah ikan asap yang diawetkan menggunakan api kayu tradisional.",
+    "Tari Isosolo adalah tarian perang yang menggambarkan keberanian suku Dani.",
+    "Daerah ini dipenuhi dengan pohon pinus, pakis raksasa, dan burung nuri gunung."
   ],
   "South Papua": [
-    "Wilayah rawa, suku Asmat terkenal dengan ukiran kayu.",
-    "Jew House: rumah komunal untuk berkumpul.",
-    "Ulat Sagu: makanan dari larva sagu, berani coba?",
-    "Tari Tumbu Tanah: tarian penghormatan untuk bumi.",
-    "Ada buaya air asin dan burung kakaktua putih di rawa."
+    "Provinsi dataran rendah Papua dengan ukiran Asmat yang unik.",
+    "Rumah Jew adalah rumah komunal suku Asmat yang digunakan untuk pertemuan dan upacara.",
+    "Ulat Sagu adalah makanan tradisional yang terbuat dari larva kumbang sagu.",
+    "Tari Tumbu Tanah menggambarkan penghormatan terhadap bumi.",
+    "Wilayah ini memiliki hutan rawa dan sagu yang lebat, dengan fauna seperti buaya air asin."
   ],
   "Southwest Papua": [
-    "Wilayah baru, lautnya kaya ikan dan terumbu karang.",
-    "Honai: rumah bulat suku Moi, nyaman dan hangat.",
-    "Ikan kuah kuning papeda: makanan khas Papua.",
-    "Tari Alen: tarian tentang kehidupan sehari-hari.",
-    "Ada cenderawasih merah dan ikan pari manta di laut."
+    "Wilayah baru dengan sumber daya laut yang kaya dan budaya suku Moi.",
+    "Honai adalah rumah bundar tradisional suku Moi.",
+    "Ikan kuah kuning papeda adalah hidangan khas Papua.",
+    "Tari Alen adalah tarian tradisional suku Moi yang menggambarkan kehidupan sehari-hari.",
+    "Perairan Misool dan Waigeo adalah surga keanekaragaman hayati laut."
   ],
   "Papua": [
-    "Provinsi paling timur, banyak budaya asli Papua.",
-    "Kariwari: rumah adat berbentuk limas segi delapan.",
-    "Kue lontar: pai susu besar, manis dan gurih.",
-    "Tari Perang: tarian semangat kepahlawanan.",
-    "Ada burung cenderawasih, kasuari, dan kangguru pohon."
+    "Provinsi paling timur di Indonesia, kaya akan alam dan budaya asli Papua.",
+    "Rumah Kariwari adalah rumah berbentuk piramida segi delapan untuk suku Tobati-Enggros.",
+    "Kue lontar adalah kue lokal yang manis dan gurih, mirip dengan pai susu besar.",
+    "Tari Perang melambangkan kepahlawanan dan kegagahan.",
+    "Pegunungan Jayawijaya memiliki keanekaragaman hayati yang luar biasa."
   ]
 };
 
       if (hints[p]) {
         // Randomly select one of the 5 hints
         hint = hints[p][Math.floor(Math.random() * hints[p].length)];
+        const availableHints = hints[p].filter(h => !gameState.shownHints.includes(h));
+        if (availableHints.length > 0) {
+          // Randomly select one of the available hints
+          hint = availableHints[Math.floor(Math.random() * availableHints.length)];
+          gameState.shownHints.push(hint);
+        } else {
+          // All hints have been shown, reset for this round and show one
+          hint = "No more new hints for this province! Here's one you've seen: " + hints[p][Math.floor(Math.random() * hints[p].length)];
+          gameState.shownHints = []; // Reset so hints can be shown again
+        }
       }
       document.getElementById('hintText').textContent = hint;
     });
