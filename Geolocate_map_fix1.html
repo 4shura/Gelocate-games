@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Indonesia Map Adventure!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { 
+      margin: 0; 
+      font-family: 'Comic Sans MS', cursive;
+      background-color: #f0f9ff;
+      color: #1e40af;
+    }
+
+    .tabs { 
+      display: flex; 
+      background: #93c5fd;
+      border-radius: 15px 15px 0 0;
+      padding: 5px;
+      margin: 0 10px;
+    }
+
+    .tabs button {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      background: #60a5fa;
+      color: white;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 18px;
+      font-family: 'Comic Sans MS', cursive;
+      transition: all 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .tabs button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+
+    .tabs button.active { 
+      background: #2563eb;
+      font-weight: bold;
+      transform: translateY(2px);
+    }
+
+    .tabcontent { 
+      display: none; 
+      animation: bounceIn 0.5s ease;
+      background: white;
+      border-radius: 0 0 15px 15px;
+      margin: 0 10px;
+      padding: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.05); }
+      70% { transform: scale(0.9); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    #mapExplorer, #mapGame { 
+      height: 65vh; 
+      width: 100%;
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .numbered {
+      background: #fde047;
+      color: #854d0e;
+      font-weight: bold;
+      border: 3px solid #facc15;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    .sidebar { 
+      padding: 15px;
+      background: #dbeafe;
+      border-radius: 15px;
+      margin: 10px;
+    }
+
+    .province-card { 
+      background: white;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border: 2px solid #93c5fd;
+      transition: transform 0.3s;
+    }
+
+    .province-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .game { 
+      background: #dbeafe;
+      padding: 20px;
+      border-radius: 15px;
+      margin: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .score { 
+      margin: 8px 0;
+      font-size: 18px;
+      color: #1e40af;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: 'Comic Sans MS', cursive;
+      margin: 5px;
+      font-size: 16px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    button:hover {
+      background: #1d4ed8;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 15px;
+      border-radius: 15px;
+      display: none;
+      max-width: 420px;
+      border: 2px solid #fbbf24;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      font-size: 16px;
+      animation: slideIn 0.5s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    h2 {
+      color: #1e40af;
+      text-align: center;
+      font-size: 24px;
+      margin: 10px 0;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <!-- Tab bar -->
+  <div class="tabs">
+    <button class="tablink active" onclick="openTab(event,'explorer')">🗺️ Explore Indonesia!</button>
+    <button class="tablink" onclick="openTab(event,'game')">🎮 Play & Learn!</button>
+  </div>
+
+  <!-- Map Explorer tab -->
+  <div id="explorer" class="tabcontent" style="display:block;">
+    <div id="mapExplorer" class="map-container"></div>
+    <div class="sidebar">
+      <h2>📍 Province Fun Facts!</h2>
+      <div id="provinceDetails">Click a number on the map to learn more! 😊</div>
+    </div>
+  </div>
+
+  <!-- Game tab -->
+  <div id="game" class="tabcontent">
+    <div id="mapGame" class="map-container"></div>
+    <div class="game">
+      <h2>🎯 Find the Province Game!</h2>
+      <div class="score">🎲 Round: <span id="roundNum">1</span>/15</div>
+      <div class="score">🏆 Total points: <span id="totalPoints">0</span></div>
+      <div class="score">⭐ Last round: <span id="lastPoints">0</span></div>
+      <div id="gameStatus" style="margin: 10px 0; font-size: 18px;">Press "Start round" to begin your adventure! 🚀</div>
+      <button id="startRoundBtn">🎮 Start round</button>
+      <button id="giveHintBtn">💡 Get a hint</button>
+      <button id="endGameBtn">🏁 End game</button>
+      <div id="hintText" style="margin-top:10px; color:#1e40af; font-size:16px;"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><div id="toastBody"></div></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    function openTab(evt, tabName) {
+      document.querySelectorAll('.tabcontent').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.tablink').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabName).style.display = 'block';
+      evt.currentTarget.classList.add('active');
+
+      const indonesiaBounds = [[-11, 95], [6, 141]];
+      const paddedBounds = [[-16, 90], [11, 146]];
+        
+      if (tabName === 'explorer') {
+        setTimeout(() => {
+          mapExplorer.invalidateSize();
+          mapExplorer.setMaxBounds(paddedBounds);
+          mapExplorer.fitBounds(indonesiaBounds);
+        }, 150);
+      }
+      if (tabName === 'game') {
+        setTimeout(() => {
+          mapGame.invalidateSize();
+          mapGame.setMaxBounds(paddedBounds);
+          mapGame.fitBounds(indonesiaBounds);
+        }, 150);
+      }
+    }
+  
+    
+    // Complete province data for Indonesia
+    const PROVINCES = [
+      { id:1, name:"Aceh", lat:5.55, lng:95.32, home:"Rumoh Aceh", food:"Mie Aceh", dance:"Saman", lore:"Hikayat Malem Dagang", flora_fauna:"Sumatran orangutan, Rafflesia flower" },
+      { id:2, name:"North Sumatra", lat:2.19, lng:99.38, home:"Bolon", food:"Saksang", dance:"Tor-tor", lore:"Danau Toba", flora_fauna:"Sumatran tiger, Titan arum" },
+      { id:3, name:"West Sumatra", lat:-0.94, lng:100.35, home:"Gadang", food:"Rendang", dance:"Piring", lore:"Malin Kundang", flora_fauna:"Rafflesia arnoldii, Siamang gibbon" },
+      { id:4, name:"Riau", lat:0.53, lng:101.44, home:"Selaso Jatuh", food:"Gulai Belacan", dance:"Zapin", lore:"Lancang Kuning", flora_fauna:"Sumatran elephant, Ramin tree" },
+      { id:5, name:"Jambi", lat:-1.61, lng:103.61, home:"Panggung", food:"Tempoyak", dance:"Sekapur Sirih", lore:"Putri Tangguk", flora_fauna:"Sumatran tiger, Meranti tree" },
+      { id:6, name:"South Sumatra", lat:-3.32, lng:103.98, home:"Limas", food:"Pempek", dance:"Gending Sriwijaya", lore:"Putri Dayang Merindu", flora_fauna:"Sumatran rhinoceros, Giant orchid" },
+      { id:7, name:"Bengkulu", lat:-3.79, lng:102.26, home:"Bubungan Lima", food:"Pendap", dance:"Andun", lore:"Putri Gading Cempaka", flora_fauna:"Rafflesia bengkuluensis, Clouded leopard" },
+      { id:8, name:"Lampung", lat:-4.55, lng:105.40, home:"Nowou Sesat", food:"Seruit", dance:"Melinting", lore:"Radin Jambat", flora_fauna:"Sumatran elephant, Way Kambas rhino" },
+      { id:9, name:"Bangka Belitung", lat:-2.74, lng:106.44, home:"Rakit", food:"Mie Bangka", dance:"Campak", lore:"Akek Antak", flora_fauna:"Tarsius bancanus, Simpoh air" },
+      { id:10, name:"Riau Islands", lat:3.94, lng:108.14, home:"Belah Bubung", food:"Laksa", dance:"Zapin Melayu", lore:"Hang Tuah", flora_fauna:"Dugong, Sea turtle" },
+      { id:11, name:"West Java", lat:-6.89, lng:107.64, home:"Sunda", food:"Soto Bandung", dance:"Jaipong", lore:"Sangkuriang", flora_fauna:"Javan leopard, Rafflesia patma" },
+      { id:12, name:"Jakarta", lat:-6.21, lng:106.85, home:"Betawi", food:"Kerak telor", dance:"Topeng Betawi", lore:"Si Pitung", flora_fauna:"Elang Bondol, Mangrove forest" },
+      { id:13, name:"Central Java", lat:-7.15, lng:110.14, home:"Joglo", food:"Lumpia", dance:"Serimpi", lore:"Roro Jonggrang", flora_fauna:"Javan gibbon, Teak forest" },
+      { id:14, name:"Yogyakarta", lat:-7.79, lng:110.37, home:"Bangsal Kencono", food:"Gudeg", dance:"Bedhaya", lore:"Roro Mendut", flora_fauna:"Perkutut, Sawo kecik tree" },
+      { id:15, name:"East Java", lat:-7.53, lng:112.23, home:"Joglo Pencu", food:"Rawon", dance:"Reog", lore:"Ken Arok", flora_fauna:"Banteng, Rafflesia zollingeriana" },
+      { id:16, name:"Banten", lat:-6.12, lng:106.15, home:"Baduy", food:"Sate Bandeng", dance:"Debus", lore:"Sultan Ageng Tirtayasa", flora_fauna:"Javan rhinoceros, Baduy forest" },
+      { id:17, name:"Bali", lat:-8.34, lng:115.09, home:"Bale Bali", food:"Lawar", dance:"Pendet", lore:"Calon Arang", flora_fauna:"Bali starling, Frangipani" },
+      { id:18, name:"West Nusa Tenggara", lat:-8.65, lng:117.36, home:"Dalam Loka", food:"Ayam Taliwang", dance:"Gandrung", lore:"Putri Mandalika", flora_fauna:"Rusa timor, Sandalwood" },
+      { id:19, name:"East Nusa Tenggara", lat:-8.65, lng:121.07, home:"Musalaki", food:"Se'i", dance:"Caci", lore:"Ata Malo", flora_fauna:"Komodo dragon, Lontar palm" },
+      { id:20, name:"West Kalimantan", lat:-0.27, lng:111.47, home:"Panjang", food:"Bubur Pedas", dance:"Monong", lore:"Bujang Nadi", flora_fauna:"Orangutan, Black orchid" },
+      { id:21, name:"Central Kalimantan", lat:-1.68, lng:113.38, home:"Betang", food:"Juhu Singkah", dance:"Mandau", lore:"Sangalang", flora_fauna:"Proboscis monkey, Ironwood" },
+      { id:22, name:"South Kalimantan", lat:-3.09, lng:115.28, home:"Bubungan Tinggi", food:"Soto Banjar", dance:"Baksa Kembang", lore:"Putri Junjung Buih", flora_fauna:"Bekantan, Kasturi orchid" },
+      { id:23, name:"East Kalimantan", lat:0.78, lng:116.24, home:"Lamin", food:"Kepiting Soka", dance:"Erau", lore:"Putri Karang Melenu", flora_fauna:"Sun bear, Black orchid" },
+      { id:24, name:"North Kalimantan", lat:3.07, lng:116.04, home:"Baloy", food:"Kepiting Kenari", dance:"Kancet Ledo", lore:"Mandau Talawang", flora_fauna:"Pygmy elephant, Slipper orchid" },
+      { id:25, name:"North Sulawesi", lat:0.62, lng:123.97, home:"Pewaris", food:"Tinutuan", dance:"Maengket", lore:"Toar Lumimuut", flora_fauna:"Tarsier, Maleo bird" },
+      { id:26, name:"Gorontalo", lat:0.54, lng:123.06, home:"Dulohupa", food:"Ilabulo", dance:"Saronde", lore:"Raja Botutihe", flora_fauna:"Bone bat, Coelogyne celebensis" },
+      { id:27, name:"Central Sulawesi", lat:-1.43, lng:121.44, home:"Tambi", food:"Kaledo", dance:"Balia", lore:"Sawerigading", flora_fauna:"Anoa, Babirusa" },
+      { id:28, name:"South Sulawesi", lat:-3.64, lng:119.94, home:"Tongkonan", food:"Coto Makassar", dance:"Pakarena", lore:"I La Galigo", flora_fauna:"Celebes macaque, Black orchid" },
+      { id:29, name:"West Sulawesi", lat:-2.84, lng:119.23, home:"Mamuju", food:"Jepa", dance:"Pattudu", lore:"To Manurung", flora_fauna:"Hornbill, Cacao tree" },
+      { id:30, name:"Southeast Sulawesi", lat:-4.14, lng:122.17, home:"Kamali", food:"Sinonggi", dance:"Lariangi", lore:"Oheo", flora_fauna:"Knobbed hornbill, Ebony" },
+      { id:31, name:"Maluku", lat:-3.23, lng:130.14, home:"Baileo", food:"Papeda", dance:"Cakalele", lore:"Batu Badaun", flora_fauna:"Moluccan cockatoo, Nutmeg" },
+      { id:32, name:"North Maluku", lat:0.63, lng:127.97, home:"Sasadu", food:"Gohu Ikan", dance:"Tide-Tide", lore:"Momole", flora_fauna:"Wallace's standardwing, Clove tree" },
+      { id:33, name:"West Papua", lat:-1.33, lng:133.17, home:"Mod Aki Aksa", food:"Papeda", dance:"Yospan", lore:"Raja Ampat", flora_fauna:"Wilson's bird of paradise, Matoa" },
+      { id:34, name:"Central Papua", lat:-4.27, lng:138.08, home:"Honai", food:"Ulat Sagu", dance:"Tari Perang", lore:"Sungai Memberamo", flora_fauna:"Tree kangaroo, Alpine orchid" },
+      { id:35, name:"Highland Papua", lat:-4.27, lng:138.70, home:"Honai", food:"Babati", dance:"Pesek", lore:"Nainugi", flora_fauna:"Cenderawasih, Mountain orchid" },
+      { id:36, name:"South Papua", lat:-5.34, lng:140.70, home:"Honai", food:"Sagu", dance:"Isolo", lore:"Asmat", flora_fauna:"Crowned pigeon, Sago palm" },
+      { id:37, name:"Southwest Papua", lat:-1.87, lng:132.30, home:"Mod Aki Aksa", food:"Ikan Bakar", dance:"Yospan", lore:"Fatagar", flora_fauna:"Red bird of paradise, Coral reefs" },
+      { id:38, name:"Papua", lat:-3.65, lng:140.71, home:"Honai", food:"Kue Sagu", dance:"Musyoh", lore:"Koreri", flora_fauna:"Bird of paradise, Orchid"}
+    ];
+
+    // Explorer map (with numbered markers)
+    const mapExplorer = L.map('mapExplorer').setView([-2.5, 118], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'&copy; OpenStreetMap contributors' }).addTo(mapExplorer);
+
+    function createNumberedDivIcon(number) {
+      return L.divIcon({
+        html: `<div class="numbered">${number}</div>`,
+        className: "",
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+    }
+
+    PROVINCES.forEach(p => {
+      L.marker([p.lat, p.lng], { icon: createNumberedDivIcon(p.id) })
+        .addTo(mapExplorer)
+        .on('click', () => showProvinceDetails(p));
+    });
+
+    function getYoutubeEmbedUrl(url) {
+      if (!url) return null;
+      if (url.includes('/embed/')) return url;
+      try {
+        const parsed = new URL(url);
+        let videoId = '';
+        if (parsed.hostname.includes('youtu.be')) {
+          videoId = parsed.pathname.replace('/', '');
+        } else {
+          videoId = parsed.searchParams.get('v') || '';
+        }
+        if (!videoId) return url;
+        return `https://www.youtube.com/embed/${videoId}`;
+      } catch (err) {
+        return url;
+      }
+    }
+
+    function showProvinceDetails(p) {
+      // Province details object similar to hints structure
+      const details = {
+  "Aceh": {
+    description: "Aceh sering disebut “Serambi Mekah” karena menjadi tempat pertama masuknya Islam di Indonesia. Nilai-nilai Islam sangat kuat dalam kehidupan dan keseniannya.",
+    home: "Rumoh Aceh - rumah panggung dari kayu yang tinggi agar tahan gempa dan banjir.",
+    food: "Mie Aceh - mi berempah kuat dengan cita rasa pedas, biasanya dicampur daging sapi atau seafood.",
+    dance: "Tari Saman - dikenal dengan gerakan serempak yang cepat dan dinamis, melambangkan kekompakan masyarakat.",
+    lore: "Putroe Neng dan Sultan Aceh - Dahulu di tanah Aceh, seorang Sultan jatuh cinta pada Putroe Neng, putri cantik dari Tiongkok. Untuk membuktikan cintanya, sang Sultan membangun kapal megah berlapis emas. Namun, Putroe Neng merindukan negerinya dan akhirnya pulang, meninggalkan Sultan yang patah hati. Konon, kapal megah itu kini menjadi batu besar di pantai Aceh.",
+    flora_fauna: "Aceh dikenal dengan kopi Gayo yang harum dan tumbuh di dataran tinggi Takengon. Hutan Aceh juga menjadi rumah bagi gajah Sumatra, badak Sumatra, dan harimau Sumatra, tiga satwa langka yang dilindungi. Wilayahnya yang masih hijau menjadi paru-paru Sumatra bagian utara.",
+    video:"https://www.youtube.com/embed/_w3R7olVmVY?si=kkytnXKilqU-K_Rn"
+  },
+  "North Sumatra": {
+    description: "Provinsi ini dihuni oleh berbagai suku seperti Batak Toba, Karo, Mandailing, dan Nias. Setiap suku memiliki tradisi unik.",
+    home: "Bolon House - rumah besar tradisional Batak Toba, beratap melengkung dan berhias ukiran warna-warni. Biasanya dihuni beberapa keluarga besar.",
+    food: "Saksang - makanan khas Batak dari daging (biasanya babi) yang dimasak dengan darah dan bumbu andaliman. Selain itu ada Arsik ikan mas, masakan berempah khas Toba.",
+    dance: "Tari Tortor adalah tarian sakral yang awalnya digunakan dalam upacara adat Batak. Penari menari dengan gerakan tangan dan kaki yang lembut diiringi alat musik gondang.",
+    lore: "Legenda Danau Toba - Seorang nelayan menemukan ikan ajaib yang berubah menjadi gadis cantik. Mereka menikah, tetapi sang istri melarang suaminya mengungkit asal-usulnya. Saat marah, sang nelayan melanggar janji, dan seketika air meluap menenggelamkan desa mereka. Tempat itu kemudian dikenal sebagai Danau Toba dengan pulau Samosir di tengahnya.",
+    flora_fauna: "Daerah ini memiliki bunga kantong semar di pegunungan dan durian Siborong-borong yang manis. Di Danau Toba hidup ikan endemik ihan Batak, sementara di hutan lebatnya bisa ditemukan orangutan Sumatra dan burung rangkong."
+    ,video:"https://www.youtube.com/embed/D696vPUC3dc?si=xDDNyIABUc1LjwFV"
+    
+  },
+  "West Sumatra": {
+    description: "Dikenal dengan masyarakat Minangkabau yang menganut sistem matrilineal (garis keturunan dari ibu). Budaya Minang sangat menjunjung tinggi musyawarah dan adat bersendi syarak.",
+    home: "Rumah Gadang - memiliki atap berbentuk tanduk kerbau, melambangkan semangat kemenangan dalam legenda Minangkabau.",
+    food: "Rendang - daging sapi yang dimasak dengan santan dan rempah selama berjam-jam hingga kering. Makanan ini melambangkan kesabaran dan ketekunan.",
+    dance: "Tari Piring - melambangkan rasa syukur atas hasil panen. Penari menari sambil memegang piring di tangan tanpa menjatuhkannya. Gerakannya cepat dan penuh semangat.",
+    lore: "Malin Kundang - Malin Kundang, pemuda miskin yang merantau, berhasil menjadi kaya. Namun, saat kembali ke kampung halamannya, ia malu mengakui ibunya yang miskin. Sang ibu menangis dan berdoa pada Tuhan, lalu petir menyambar kapal Malin Kundang, mengubahnya menjadi batu di tepi pantai Air Manis.",
+    flora_fauna: "Flora khasnya adalah Rafflesia arnoldii, bunga raksasa berbau tajam yang tumbuh di hutan Bukit Barisan. Faunanya meliputi harimau Sumatra dan beruang madu. Hutan hujan di daerah ini juga banyak ditumbuhi pohon meranti dan rotan liar."
+    ,video:"https://www.youtube.com/embed/ewDVtEyLtY8?si=FuyjnwEIiWh3_1w4"
+  
+  },
+  "Riau": {
+    description: "Riau dikenal sebagai tanah Melayu yang kaya adat dan sastra. Sungainya dahulu menjadi jalur perdagangan dan kebudayaan.",
+    home: "Selaso Jatuh Kembar - biasanya digunakan untuk kegiatan sosial dan musyawarah, bukan untuk tempat tinggal.",
+    food: "Asam Pedas Patin - ikan air tawar yang dimasak dengan bumbu pedas segar khas Melayu.",
+    dance: "Zapin - dibawa oleh pedagang Arab dan berkembang di tanah Melayu. Gerakannya halus, menggambarkan sopan santun dan keanggunan.",
+    lore: "Putri Kaca Mayang - Putri Kaca Mayang adalah putri cantik yang menolak dijodohkan dengan raja jahat. Ia memilih berjuang bersama kekasihnya, Panglima Gagak Suro. Dalam pertempuran sengit, mereka gugur bersama dan dipercaya arwah mereka menjaga Sungai Siak agar tetap makmur bagi rakyat Riau.",
+    flora_fauna: "Provinsi ini kaya akan pohon sagu, bahan utama makanan tradisional. Hutan gambutnya jadi habitat macan dahan, beruang madu, dan burung enggang. Sungainya banyak ditumbuhi nipah dan bakau, pelindung alami pesisir."
+    ,video:"https://www.youtube.com/embed/elT5TE-BG20?si=jkQ5HraN8uortiBr"
+    
+  },
+  "Riau Islands": {
+    description: "Terdiri dari ribuan pulau kecil dan menjadi pintu perdagangan laut sejak dulu.",
+    home: "Rumah Belah Bubung - atap menyerupai perahu terbalik, menandakan pengaruh budaya maritim.",
+    food: "Gonggong - siput laut yang menjadi favorit karena bahan laut yang melimpah.",
+    dance: "Tandak - Joyful social dance accompanied by Malay music.",
+    lore: "Hang Nadim - Hang Nadim adalah anak jenius yang menyelamatkan Singapura dari serangan ikan besar dengan ide cemerlangnya. Namun, karena terlalu pintar, raja merasa iri dan membuangnya ke laut. Rakyat pun sedih, dan sejak itu laut menjadi tenang seolah turut meratapi kepergian Hang Nadim.",
+    flora_fauna: "Pulau-pulaunya memiliki kelapa, pandan laut, dan cemara pantai. Di perairannya hidup dugong, penyu hijau, dan ikan napoleon. Lingkungan lautnya menjadi surga bagi terumbu karang dan ikan tropis berwarna cerah."
+    ,video:"https://www.youtube.com/embed/A6-TUh4mm60?si=k-bq-iPki4wKC373"
+    
+  },
+  "Jambi": {
+    description: "Provinsi yang dulu menjadi bagian dari Kerajaan Melayu. Masyarakatnya sangat menjunjung tinggi kesopanan dan adat.",
+    home: "Rumah Kajang Leko - berbentuk rumah panggung yang dihiasi ukiran indah dan beratap panjang.",
+    food: "Gulai Tepek Ikan - Fermented durian sauce served with fish.hidangan ikan dengan santan kental dan rempah harum.",
+    dance: "Sekapur Sirih - tarian penyambutan tamu dengan simbol penghormatan. Penari membawa wadah sirih sebagai tanda keramahan.",
+    lore: "Putri Pinang Masak - Putri Pinang Masak terkenal karena kecantikannya dan keberanian menolak lamaran raja jahat. Saat istananya diserang, ia memilih melompat ke Sungai Batanghari daripada dipaksa menikah. Air sungai yang berubah keruh disebut sebagai air mata sang putri.",
+    flora_fauna: "Hutan Jambi memiliki pohon meranti dan jelutung penghasil getah. Di Taman Nasional Kerinci Seblat hidup harimau Sumatra, tapir, dan siamang. Flora rawa seperti anggrek tanah juga tumbuh subur di daerah ini."
+    ,video:"https://www.youtube.com/embed/_XthFFdz_jA?si=nd8o-iUO2Wts69-U"
+    
+  },
+  "South Sumatra": {
+    description: "Wilayah ini dulu merupakan pusat kejayaan Kerajaan Sriwijaya, kerajaan maritim terbesar di Asia Tenggara.",
+    home: "Rumah Limas - rumah kayu bertingkat lima melambangkan lapisan sosial masyarakat.",
+    food: "Pempek - olahan ikan tenggiri dengan saus cuko asam manis pedas.",
+    dance: "Tari Gending Sriwijaya - menggambarkan kemegahan kerajaan dan keramahan rakyat Palembang.",
+    lore: "Si Pahit Lidah - Di masa lalu, hidup seorang sakti bernama Serunting, yang karena kutukannya bisa membuat apa pun yang ia ucapkan menjadi nyata. Suatu hari, karena marah, ia mengutuk teman dan desa sekitarnya menjadi batu. Kini, batu-batu unik di Sumatera Selatan dipercaya berasal dari kutukan Si Pahit Lidah.",
+    flora_fauna: "Flora khasnya gelam dan meranti merah, sedangkan faunanya buaya senyulong, harimau Sumatra, dan beruang madu. Rawa-rawa di Musi Banyuasin menjadi daerah penting bagi burung air seperti bangau bluwok."
+    ,video:"https://www.youtube.com/embed/Sj3Cb6L5rRM?si=sU-Ow-XlOdrU06UQ"
+    
+  },
+  "Bengkulu": {
+    description: "Bengkulu dikenal dengan bunga Rafflesia arnoldii, serta sejarah kolonial Inggris.",
+    home: "Rumah Bubungan Lima - rumah besar tempat musyawarah adat Saibatin.",
+    food: "Pendap - ikan dibumbui kelapa parut dan rempah, dibungkus daun talas lalu dikukus.",
+    dance: "Andun - tarian pergaulan yang ceria dan menggambarkan keakraban pemuda-pemudi.",
+    lore: "Bunga Rafflesia - Konon, di hutan Bengkulu hiduplah gadis bernama Raflesia yang dikutuk karena keserakahannya mengambil bunga langka tanpa izin. Ia berubah menjadi bunga raksasa yang indah tapi tak beraroma harum. Itulah asal mula Rafflesia arnoldii, bunga terbesar di dunia.",
+    flora_fauna: "Bengkulu terkenal sebagai rumah bagi Rafflesia arnoldii terbesar di dunia. Hutan tropisnya jadi tempat kukang, trenggiling, dan burung elang hitam. Banyak juga rotan liar dan bambu kuning tumbuh di pedalaman."    
+    ,video:"https://www.youtube.com/embed/6ItJIufEC-M?si=7ZmulwoPbm7ONR27"
+  
+  },
+  "Lampung": {
+    description: "Lampung berada di ujung selatan Sumatera dan menjadi gerbang masuk ke Pulau Jawa.",
+    home: "Nuwo Sesat - Traditional meeting house of Lampung people.",
+    food: "Seruit - ikan goreng atau bakar dengan sambal terasi dan lalapan, dimakan bersama-sama.",
+    dance: "Tari Sigeh Penguten -tarian penyambutan tamu yang menggambarkan kehalusan budi dan sopan santun.",
+    lore: "Putri Tangguk - Putri Tangguk adalah wanita kaya yang pelit dan sombong. Suatu hari, ia menumpahkan padi ke jalan dan malah menyapu butiran itu hingga habis. Tuhan murka dan membuat ladangnya tak lagi berbuah. Sejak itu, orang Lampung belajar untuk tidak sombong dan selalu bersyukur.",
+    flora_fauna: "Lampung dikenal karena kopi robusta, lada hitam, dan pohon durian. Di Taman Nasional Way Kambas hidup gajah Sumatra, badak Sumatra, dan anoa. Pesisirnya juga jadi tempat bersarang penyu belimbing."
+    ,video:"https://www.youtube.com/embed/ntF_aHW4b3c?si=b9PS8uWDAjo9RUSl"
+    
+  },
+  "Bangka Belitung": {
+    description: "Wilayah ini terkenal dengan pantai berpasir putih dan batu granit besar.",
+    home: "Rumah Panggung Bangka - sederhana dan tinggi untuk menghindari banjir.",
+    food: "Lempah Kuning - sup ikan dengan kuah kuning berempah khas Bangka.",
+    dance: "Campak Dance - menggambarkan keceriaan dan pergaulan muda-mudi di pesisir.",
+    lore: "Batu Belah Batu Betangkup - Seorang ibu miskin sedih karena anaknya tidak mau makan ikan hasil jerih payahnya. Dengan hati hancur, ia berdoa dan memohon agar bumi menelannya. Tiba-tiba, batu besar terbelah dan menelan sang ibu. Legenda ini mengajarkan agar anak selalu menghormati ibunya.",
+    flora_fauna: "Wilayah kepulauan ini terkenal dengan pohon kelapa dan pohon cempedak. Lautnya menjadi rumah bagi ikan pari, lumba-lumba, dan penyu sisik. Banyak pulau kecil dihiasi cemara laut dan bakau yang rimbun."
+    ,video:"https://www.youtube.com/embed/BV31zSft-tk?si=-ajYUghbm0LG9yMc"
+    
+  },
+  "Banten": {
+    description: "Dulu merupakan wilayah kerajaan Islam besar, Kesultanan Banten. Kini dikenal dengan keindahan pantai dan suku Baduy yang menjaga kesederhanaan hidup.",
+    home: "Rumah Baduy - rumah sederhana tanpa paku, melambangkan keselarasan dengan alam.",
+    food: "Sate Bandeng - ikan bandeng yang dihaluskan dan dimasak dengan rempah khas Banten.",
+    dance: "Tari Rampak Bedug - menampilkan hentakan bedug yang kompak, menggambarkan semangat gotong royong masyarakat Banten.",
+    lore: "Legenda Badak Jawa - Dikisahkan seekor badak sakti menjaga hutan Ujung Kulon. Saat manusia tamak menebang pohon sembarangan, badak itu menampakkan diri dan mengamuk, lalu menghilang ke dalam kabut. Sejak itu, masyarakat Banten percaya badak Jawa adalah penjaga keseimbangan alam.",
+    flora_fauna: "Wilayah ini masih memiliki hutan hujan di Taman Nasional Ujung Kulon, tempat badak Jawa satu-satunya di dunia. Flora khasnya ketapang dan pohon mangrove, menjaga pantai dari abrasi."
+    ,video:"https://www.youtube.com/embed/6Y5M88UupXk?si=v_s8S3KFr5BnyQjo"
+    
+  },
+  "Jakarta": {
+    description: "Sebagai ibu kota negara, Jakarta adalah pusat pemerintahan, ekonomi, dan budaya. Meski modern, Jakarta tetap memelihara budaya Betawi yang kaya warna.",
+    home: "Rumah Kebaya - bentuk atapnya menyerupai lipatan kebaya. Rumah ini mencerminkan keramahan dan keterbukaan orang",
+    food: "Kerak Telor (telur bebek, beras ketan, dan serundeng) adalah makanan khas yang biasa ditemukan di acara rakyat. Ada juga Soto Betawi yang berkuah santan gurih.",
+    dance: "Tari Topeng Betawi - menggambarkan kisah kehidupan masyarakat Betawi dengan gerakan lucu, energik, dan penuh ekspresi.",
+    lore: "Si Jampang - Si Jampang adalah pendekar Betawi pemberani yang membela rakyat kecil dari penindasan penjajah. Meski dianggap bandit oleh penguasa, rakyat mencintainya karena keberanian dan kebaikannya. Ceritanya menjadi simbol keadilan dan keberanian orang Betawi.",
+    flora_fauna: "Meski urban, Jakarta masih punya mangrove di Pantai Indah Kapuk dan pohon ketapang di taman kota. Fauna yang tersisa antara lain burung kuntul, ikan mujair, dan biawak air di sungai-sungai kota."
+    ,video:"https://www.youtube.com/embed/BbX60C0E0P4?si=euBUEM7i5tYmrboL"
+    
+  },
+  "West Java": {
+    description: "Tanah Sunda yang terkenal dengan keramahan, keindahan alam, dan kreativitas budayanya.",
+    home: "Rumah Julang Ngapak - memiliki atap melebar seperti burung mengepakkan sayap, melambangkan keterbukaan.",
+    food: "Nasi Liwet, Surabi Bandung, dan Lotek yang sehat dan segar.",
+    dance: "Jaipongan - tarian energik dengan gerakan lincah dan menggoda, menggambarkan keceriaan perempuan Sunda.",
+    lore: "Legenda Sangkuriang - Sangkuriang jatuh cinta pada Dayang Sumbi, tanpa tahu bahwa ia ibunya sendiri. Saat tahu kebenarannya, Dayang Sumbi menolak dan menantang Sangkuriang membuat danau dan perahu dalam semalam. Gagal, perahunya ditendang hingga terbalik dan menjadi Gunung Tangkuban Perahu.",
+    flora_fauna: "Flora khasnya teh dan bambu, tumbuh subur di dataran tinggi. Fauna uniknya adalah macan tutul Jawa dan elang Jawa, lambang negara. Banyak pohon rasamala dan puspa di hutan Gunung Gede Pangrango."
+    ,video:"https://www.youtube.com/embed/VBpuVoKIBp0?si=ZLfpAo9fdi64-9AS"
+    
+  },
+  "Central Java": {
+    description: "Pusat kebudayaan Jawa yang halus dan penuh filosofi hidup.",
+    home: "Joglo - memiliki atap tinggi bertingkat, melambangkan status sosial pemiliknya.",
+    food: "Lumpia Semarang, Soto Kudus, dan Nasi Liwet Solo mencerminkan cita rasa manis dan gurih khas Jawa Tengah.",
+    dance: "Gambyong - memiliki gerakan lembut dan anggun, sering ditampilkan untuk menyambut tamu agung.",
+    lore: "Legenda Roro Jonggrang - Roro Jonggrang menolak lamaran Bandung Bondowoso dan menantangnya membuat seribu candi dalam satu malam. Ketika hampir selesai, Roro Jonggrang menipu dengan menyalakan api fajar. Bandung Bondowoso marah dan mengutuknya menjadi arca ke-seribu di Candi Prambanan.",
+    flora_fauna: "Flora khasnya jati dan pohon mahoni, banyak di Blora dan Grobogan. Fauna uniknya lutung Jawa, elang brontok, dan rusa timor. Gunung Merapi menumbuhkan banyak anggrek liar di lerengnya."
+    ,video:"https://www.youtube.com/embed/ua5ljHVBV64?si=6VrDX6ofU5Nhm8oL"
+    
+  },
+  "Yogyakarta": {
+    description: "Satu-satunya daerah istimewa yang dipimpin oleh Sultan. Budayanya adalah gabungan antara nilai luhur Jawa dan semangat modern.",
+    home: "Joglo Yogyakarta - mirip dengan di Jawa Tengah namun lebih banyak ukiran simbolik.",
+    food: "Gudeg - olahan nangka muda dengan santan dan gula merah, menjadi ikon kota Yogyakarta.",
+    dance: "Bedhaya - tarian klasik keraton yang lembut dan sarat makna spiritual.",
+    lore: "Legenda Gunung Merapi - Gunung Merapi dipercaya sebagai tempat tinggal makhluk halus penjaga kerajaan. Dikisahkan Ki Sapu Jagad membuka jalan bagi Merapi agar menjaga keseimbangan dunia manusia. Karena itu, masyarakat Yogya setiap tahun mengadakan labuhan, persembahan simbol rasa hormat.",
+    flora_fauna: "Daerah ini punya pohon beringin yang dianggap sakral di Alun-Alun. Faunanya burung walet, biawak, dan kijang kecil. Gunung Merapi menumbuhkan rumput ilalang dan pohon sengon."
+    ,video:"https://www.youtube.com/embed/ZeDB-LNLGWg?si=3RSJyirTGsYg-HQ8"
+    
+  },
+  "East Java": {
+    description: "Provinsi dengan budaya yang kuat dan beragam, dari Madura hingga Blambangan.",
+    home: "Joglo Pencu - atapnya lebih tinggi dari Joglo biasa, menunjukkan keagungan.",
+    food: "Rawon - sup daging dengan kuah hitam kluwek",
+    dance: "Reog Ponorogo - pertunjukan besar dengan topeng raksasa dan kostum singa barong, melambangkan keberanian.",
+    lore: "Reog Ponorogo - Dahulu, Raja Klono Sewandono berusaha menaklukkan raksasa Singa Barong untuk melamar Dewi Songgolangit. Dengan bantuan warok dan jathil, ia berhasil. Kini pertunjukan Reog dilakukan untuk mengenang keberanian dan keindahan perjuangan cinta tersebut.",
+    flora_fauna: "Flora khasnya pohon jati, tembakau, dan mangga. Fauna terkenal adalah elang bondol, banteng Jawa, dan penyu hijau di pesisir Banyuwangi. Gunung Bromo memiliki padang savana yang unik."
+    ,video:"https://www.youtube.com/embed/ME1i_9uSzZQ?si=zLg0DuBikB_HRUcg"
+    
+  },
+  "Central Kalimantan": {
+    description: "Wilayah ini banyak dihuni suku Dayak Ngaju.",
+    home: "Betang House - Lpanjang dan luas, menjadi tempat hidup bersama satu keluarga besar.",
+    food: "Juhu Singkah - rebung rotan yang dimasak santan.",
+    dance: "Tari Tambun dan Bungai - melambangkan keberanian pahlawan Dayak.",
+    lore: "Legenda Batu Banama - Sepasang kekasih yang dilarang menikah melarikan diri dan berjanji bersatu selamanya. Namun karena melanggar adat, mereka dikutuk menjadi batu di tepi sungai. Batu itu disebut Batu Banama, lambang cinta sejati yang abadi di tanah Dayak.",
+    flora_fauna: "Terdapat hutan rawa gambut dengan pohon ramin dan jelutung. Fauna khasnya orangutan Kalimantan, beruang madu, dan buaya muara. Hutan ini juga kaya dengan lumut dan pakis besar."
+    ,video:"https://www.youtube.com/embed/1FYniRzesdI?si=nxSFiqmrCYK8_1Gr"
+    
+  },
+  "West Kalimantan": {
+    description: "Disebut Bumi Khatulistiwa karena dilalui garis ekuator.",
+    home: "Rumah Panjang - tempat tinggal bersama satu komunitas Dayak.",
+    food: "Pengkang - nasi ketan dan udang kering dibungkus daun pisang",
+    dance: "Monong - digunakan untuk tolak bala dalam tradisi Dayak.",
+    lore: "Asal Mula Sungai Kapuas - Seorang pemuda sakti menebas tanah dengan pedangnya untuk membendung banjir. Dari tebasannya, mengalir sungai besar yang kini dikenal sebagai Sungai Kapuas. Masyarakat percaya sungai itu adalah anugerah keberanian sang pemuda.",
+    flora_fauna: "Flora khasnya pohon ulin yang kuat, dan anggrek hitam. Fauna khasnya orangutan, bekantan, dan burung enggang. Sungai Kapuas menjadi habitat ikan air tawar langka."
+    ,video:"https://www.youtube.com/embed/75EzRbOE2hA?si=9_FnPStcvoOCflvZ"
+    
+  },
+  "South Kalimantan": {
+    description: "Dikenal dengan pasar terapung dan budaya Banjar yang ramah.",
+    home: "Bubungan Tinggi - memiliki atap lancip dan banyak ruang.",
+    food: "Soto Banjar - kuahnya yang gurih dan kaya rempah (terutama cengkeh, kayu manis, dan kapulaga) namun tanpa santan, seringkali ditambahkan susu untuk rasa creamy ringan.",
+    dance: "Baksa Kembang - tarian sambutan dengan gerakan lembut dan bunga di tangan.",
+    lore: "Legenda Putri Junjung Buih - Dari buih sungai muncul seorang bayi perempuan yang cantik, diangkat menjadi putri kerajaan Banjar. Ia disebut Putri Junjung Buih, lambang kesucian dan keberkahan air bagi masyarakat Kalimantan Selatan.",
+    flora_fauna: "Flora khasnya pohon karet dan meranti, sedangkan faunanya bekantan, burung rangkong, dan kancil. Sungai Barito mendukung banyak ikan toman dan belida."
+    ,video:"https://www.youtube.com/embed/uLa7MPyxHSQ?si=-8DrqptjKIuujwD3"
+    
+  },
+  "East Kalimantan": {
+    description: "Wilayah kaya sumber alam dan budaya suku Dayak Kenyah dan Kutai.",
+    home: "Lamin House - bangunan panjang penuh ukiran warna-warni.",
+    food: "Nasi Bekepor - bekepor diambil dari cara masaknya yang diputar di atas bara api menggunakan panci yang terbuat dari perunggu sembari membaca selawat.",
+    dance: "Tari Gong - dilakukan dengan iringan alat musik gong besar.",
+    lore: "Legenda Pesut Mahakam - Seorang ibu kehilangan anaknya di sungai dan berdoa dengan sedih. Tiba-tiba, sekumpulan ikan muncul menyerupai anaknya, berenang lembut di air. Mereka dipercaya sebagai pesut, simbol cinta ibu yang abadi di Sungai Mahakam.",
+    flora_fauna: "Flora khasnya anggrek hitam dan pohon ulin, sedangkan faunanya bekantan, beruang madu, dan pesut Mahakam (lumba-lumba air tawar langka)."
+    ,video:"https://www.youtube.com/embed/qQuha5oCq_E?si=bJaNtkn24eAaS-GM"
+    
+  },
+  "North Kalimantan": {
+    description: "Provinsi termuda di Kalimantan, kaya hutan dan sungai.",
+    home: "Rumah Baloy - mencerminkan keharmonisan manusia dengan alam.",
+    food: "Nasi Subut - nasi yang sangat sehat sekali padat akan gizi dan vitamin, terbuat dari campuran beras, ubi ungu dan biji jangung.",
+    dance: "Tari Magunatip - Tarian dari suku Dayak Tahol yang melatih ketangkasan kaki dengan melompati dan menghindari batang bambu yang menjepit. Gerakannya bisa mendebarkan, terutama jika dilakukan dengan mata tertutup.",
+    lore: "Legenda Burung Tingang - Burung Tingang dianggap suci oleh suku Dayak. Konon, dulu ia adalah putri langit yang turun ke bumi untuk menjaga hutan. Saat tugasnya selesai, ia berubah menjadi burung besar yang hingga kini mengawasi tanah Borneo dari langit.",
+    flora_fauna: "Flora khasnya meranti putih dan pohon damar, dengan fauna seperti orangutan, kucing batu, dan elang laut. Daerah ini punya banyak hutan perawan yang masih alami."
+    ,video:"https://www.youtube.com/embed/DZWh5uIvQKE?si=qe2B4e06Jcifdk5m"
+    
+  },
+  "Bali": {
+    description: "Pulau para dewa yang memadukan keindahan alam dan spiritualitas.",
+    home: "Rumah Gapura Candi Bentar - setiap bangunan dalam kompleks rumah memiliki fungsi spiritual sendiri.",
+    food: "Lawar (campuran daging, sayur, dan bumbu kelapa) serta Babi Guling khas upacara adat.",
+    dance: "Tari Kecak (tarian api yang menceritakan Ramayana), Legong, dan Barong menjadi simbol budaya Bali.",
+    lore: "Barong dan Rangda - Barong, roh kebaikan, bertarung dengan Rangda, ratu sihir jahat. Pertarungan mereka tak pernah berakhir, melambangkan keseimbangan antara baik dan buruk di dunia. Tarian Barong kini menjadi simbol spiritual pelindung masyarakat Bali.",
+    flora_fauna: "Pulau ini kaya akan pohon kamboja, bunga cempaka, dan padi di sawah terasering. Fauna khasnya jalak Bali yang langka. Lautnya dipenuhi ikan hias, karang berwarna-warni, dan penyu laut."
+    ,video:"https://www.youtube.com/embed/gjd78XHZazY?si=pOoq3LvNiioupiyR"
+    
+  },
+  "West Nusa Tenggara": {
+    description: "Dihuni oleh suku Sasak di Lombok dan Samawa di Sumbawa, NTB punya perpaduan budaya Islam dan adat lokal.",
+    home: "Bale Lumbung - rumah tinggi seperti lumbung padi yang berfungsi sebagai tempat tinggal.",
+    food: "Ayam Taliwang dan Plecing Kangkung, makanan pedas favorit wisatawan.",
+    dance: "Tari Gandrung Lombok - tarian pergaulan yang menggambarkan kebahagiaan rakyat.",
+    lore: "Dewi Anjani di Gunung Rinjani - Dewi Anjani dipercaya sebagai penunggu Gunung Rinjani. Ia dahulu manusia yang menjelma menjadi makhluk halus karena kesedihan. Penduduk Lombok percaya, jika seseorang mendaki dengan hati bersih, Dewi Anjani akan memberkati perjalanan mereka.",
+    flora_fauna: "Flora khasnya pohon lontar, padi gogo, dan kemiri. Faunanya anoa, rusa timor, dan burung maleo. Di Lombok juga hidup kera ekor panjang di Gunung Rinjani."
+    ,video:"https://www.youtube.com/embed/ZNUQvv0jU3k?si=_3PvRR8PIgTKxNRG"
+    
+  },
+  "East Nusa Tenggara": {
+    description: "Wilayah kering dengan budaya khas yang masih kuat.",
+    home: "Mbaru Niang - rumah kerucut tinggi dari bambu di Wae Rebo.",
+    food: "Se’i - daging asap yang dibumbui rempah khas Timor.",
+    dance: "Tari Caci - tarian perang dengan cambuk dari Manggarai.",
+    lore: "Legenda Ular Laut Komodo - Dikisahkan seorang ibu melahirkan anak kembar: satu manusia, satu naga kecil. Ia membesarkan keduanya dengan kasih sayang. Suatu hari, naga itu pergi ke hutan dan tumbuh menjadi besar. Ia disebut Orah yang kini dikenal sebagai komodo, saudara manusia penjaga alam NTT.",
+    flora_fauna: "Flora khasnya pohon lontar dan kayu cendana yang harum. Fauna ikoniknya komodo, reptil purba di Pulau Komodo. Banyak juga burung kakatua jambul kuning di hutan keringnya."
+    ,video:"https://www.youtube.com/embed/BMPYB1WgVig?si=93syq6u1gHtHImQr"
+
+  },
+  "West Sulawesi": {
+    description: "Provinsi muda dengan budaya Mandar yang kuat.",
+    home: "Boyang - rumah adat khas suku Mandar di Sulawesi Barat yang berbentuk rumah panggung dari kayu, ditopang oleh tiang-tiang kokoh.",
+    food: "Jepa - roti sagu khas Mandar.",
+    dance: "Tari Pattudu - gerakannya lembut dan menggunakan kipas.",
+    lore: "Mandar dan Ombak Emas - Seorang nelayan miskin menemukan ikan emas yang bisa berbicara. Ikan itu memberinya rezeki, tetapi ketika dijual karena keserakahan, laut marah dan menenggelamkan perahunya. Sejak itu orang Mandar menghormati laut sebagai sahabat, bukan alat.",
+    flora_fauna: "Flora khasnya pohon durian liar dan kemiri, faunanya anoa gunung dan burung rangkong sulawesi. Banyak hutan masih alami dan lembab."
+    ,video:"https://www.youtube.com/embed/VRtV2FbghaI?si=oGNrNt5mK0Wq-B5x"
+
+  },
+  "South Sulawesi": {
+    description: "Wilayah Bugis dan Toraja dengan budaya pelaut dan spiritual.",
+    home: "Tongkonan - rumah kayu beratap melengkung khas Toraja.",
+    food: "Coto Makassar - sup daging sapi yang kaya rempah dari Sulawesi Selatan, disajikan dengan jeroan sapi (seperti paru, hati, usus) dan kuah kental yang gurih dari bumbu rempah serta kacang tanah sangrai yang dihaluskan. ",
+    dance: "Tari Pakarena - Graceful dance of loyalty and patience.",
+    lore: "Legenda Sawerigading - Sawerigading, pahlawan Bugis, jatuh cinta pada saudara kembarnya, We Tenriabeng. Untuk menghindari dosa, ia berlayar jauh mencari wanita mirip sang adik. Kisahnya melambangkan perjuangan menahan diri dan kesetiaan.",
+    flora_fauna: "Flora khasnya pohon lontar dan cengkeh, fauna khasnya anoa, monyet buton, dan burung maleo. Hutan-hutannya juga ditumbuhi rotan dan bambu liar."
+    ,video:"https://www.youtube.com/embed/46F0YjcvvpM?si=ynfJ632T12Hrw2DU"
+ 
+  },
+  "Southeast Sulawesi": {
+    description: "Province of Tolaki and Buton people with maritime culture.",
+    home: "Banua Tada - memiliki bentuk rumah panggung, tetapi pada pembangunannya tidak menggunakan satupun paku.",
+    food: "Sinonggi - makanan pokok khas Suku Tolaki di Sulawesi Tenggara yang terbuat dari pati sagu dan memiliki cita rasa hambar, sehingga biasanya disajikan dengan lauk pauk kaya rasa seperti ikan kuah, sayur bening, atau daging.",
+    dance: "Tari Lulo - tarian berkelompok yang menggambarkan kebersamaan.",
+    lore: "Legenda Asal-usul Pulau Buton - Dikisahkan, pulau Buton muncul dari batu karang raksasa yang dijaga naga laut. Saat manusia pertama kali datang, naga itu memberi pesan agar manusia hidup selaras dengan laut dan hutan.",
+    flora_fauna: "Flora khasnya pohon jati laut dan pohon asam, faunanya anoa dataran rendah, burung nuri merah, dan penyu hijau di perairan Wakatobi."  
+    ,video:"https://www.youtube.com/embed/VQHLS_QKs2I?si=b1le0xM8rlMiuoD7"
+ 
+  },
+  "Central Sulawesi": {
+    description: "Daerah dengan budaya Kaili dan Tojo Una-Una.",
+    home: "Rumah Tambi - bentuk segitiga dengan atap piramida yang menjorok ke bawah, berfungsi sekaligus sebagai dinding. ",
+    food: "Kaledo - Sup tulang sapi dengan kuah yang segar, asam, dan gurih tanpa santan, yang dibuat dari perpaduan buah asam mentah dan cabai.",
+    dance: "Tari Dero - tarian berkelompok yang menggambarkan kebersamaan.",
+    lore: "La Galigo - Epos besar Bugis ini menceritakan Sawerigading, pahlawan gagah dari langit yang berpetualang mencari cinta dan keadilan. Cerita La Galigo menjadi simbol kebijaksanaan dan identitas masyarakat Sulawesi.",
+    flora_fauna: "Flora khasnya pohon ebony dan rotan, fauna khasnya anoa, babirusa, dan burung maleo. Hutan Lore Lindu jadi rumah bagi spesies langka ini."
+    ,video:"https://www.youtube.com/embed/pJclPOURshs?si=vjAooXC2_hi0kqBP"
+    
+  },
+  "Gorontalo": {
+    description: "Provinsi muda dengan tradisi yang santun dan religius.",
+    home: "Dulohupa - berasal dari bahasa Gorontalo yang berarti mufakat atau musyawarah. Rumah ini juga digunakan untuk berbagai upacara adat dan kegiatan budaya lainnya. ",
+    food: "Binte Biluhuta - sup jagung dengan ikan dan kelapa.",
+    dance: "Tari Dana-Dana - memiliki gerakan dinamis, diiringi musik dari alat seperti gambus dan marwas, serta sering ditampilkan pada acara penyambutan tamu, pernikahan, dan acara keagamaan. ",
+    lore: "Legenda Palu’e - Dulu, seorang pemuda menolong putri dari bulan yang jatuh ke bumi. Mereka menikah, tetapi sang putri akhirnya kembali ke langit. Setiap purnama, sinar bulan dipercaya sebagai tatapan lembut sang putri kepada suaminya di bumi.",
+    flora_fauna: "Flora khasnya pohon kelapa dan pohon pisang, sedangkan faunanya burung maleo dan anoa kecil. Di pantainya hidup penyu hijau yang datang untuk bertelur."  
+    ,video:"https://www.youtube.com/embed/ewo5jI1Lr04?si=oOjaUnfUH0OMch4L"
+ 
+  },
+  "North Sulawesi": {
+    description: "Pusat budaya Minahasa dan kehidupan laut yang indah.",
+    home: "Wale - rumah panggung dengan tangga di tengah.",
+    food: "Tinutuan - dibuat dengan mencampurkan bubur nasi dengan berbagai macam sayuran seperti labu kuning, jagung, kangkung, bayam, dan kemangi. ",
+    dance: "Tari Kabasaran - tarian perang tradisional dari masyarakat Minahasa, Sulawesi Utara, yang melambangkan keberanian dan semangat para pejuang leluhur.",
+    lore: "Legenda Toar Lumimuut - Toar dan Lumimuut adalah pasangan pertama di tanah Minahasa. Dari merekalah seluruh manusia Minahasa berasal. Cerita ini mengajarkan pentingnya hormat kepada leluhur dan menjaga persaudaraan di antara sesama.",
+    flora_fauna: "Flora khasnya cengkeh dan pala, dan fauna khasnya tarsius — primata kecil bermata besar. Laut Bunaken menyimpan terumbu karang cantik dan ikan warna-warni."
+    ,video:"https://www.youtube.com/embed/lho2AgFubYk?si=CtHgr8PW8ykcpamp"
+    
+  },
+  "Maluku": {
+    description: "Dikenal sebagai “Tanah Seribu Pulau” dan sumber rempah dunia.",
+    home: "Baileo - tempat pertemuan warga untuk upacara adat, musyawarah, dan kegiatan keagamaan. Ciri utamanya adalah bangunan panggung besar tanpa dinding, yang terbuat dari bahan alami seperti kayu, bambu, dan atap rumbia.",
+    food: "Papeda - makanan pokok yang terbuat dari sagu. Makanan ini memiliki tekstur yang kenyal dan lengket, serta memiliki nilai budaya yang kuat sebagai simbol kekayaan dan tradisi masyarakat setempat.",
+    dance: "Tari Cakalele - tarian perang tradisional dari Maluku dan Sulawesi Tengah yang awalnya digunakan untuk menyemangati para prajurit sebelum perang.",
+    lore: "Legenda Batu Badaong - Seorang pemuda patah hati karena kekasihnya menikah dengan orang lain. Ia duduk menangis di tepi pantai hingga tubuhnya berubah menjadi batu. Batu itu kini disebut Batu Badaong, lambang cinta yang tak pernah padam.",
+    flora_fauna: "Dikenal dengan pohon pala dan cengkeh. Lautnya menjadi rumah bagi ikan tuna, lumba-lumba, dan burung kakatua raja. Hutan tropisnya menumbuhkan anggrek liar dan pohon kenari."
+    ,video:"https://www.youtube.com/embed/dDLsSW0sU2I?si=OERtd8a1r0fjbfRK"
+  
+  },
+  "North Maluku": {
+    description: "Wilayah kepulauan rempah dan budaya Ternate–Tidore.",
+    home: "Sasadu - rumah adat suku bangsa Sahu di Halmahera Barat yang juga merupakan suku bangsa asli dan tertua yang ada di daerah tersebut.",
+    food: "Gohu Ikan - kuliner khas Ternate, Maluku Utara, yang mirip dengan sashimi, terbuat dari ikan tuna atau cakalang mentah yang dipotong dadu.",
+    dance: "Tari Soya-Soya - merupakan tarian perang yang menggambarkan keperkasaan dan semangat perjuangan melawan penjajah pada masa Kesultanan Ternate.",
+    lore: "Legenda Gunung Gamalama - Gunung Gamalama dipercaya sebagai penjaga rakyat Ternate. Jika ada penduduk berbuat jahat, gunung itu akan mengeluarkan asap sebagai peringatan. Karena itu, warga selalu hidup rukun dan menjaga alamnya.",
+    flora_fauna: "Flora khasnya pohon pala ternate dan pohon sagu, sedangkan faunanya burung bidadari Halmahera dan kuskus. Pulau-pulaunya kaya karang dan rumput laut." 
+    ,video:"https://www.youtube.com/embed/VVUFrv5R9uY?si=UihY53Ev-ge2IsV2"
+  
+  },
+  "West Papua": {
+    description: "Dikenal dengan potensi alamnya yang kaya dan budaya suku Amungme serta Kamoro.",
+    home: "Honai - rumah tradisional suku Amungme yang berbentuk bulat dengan atap kerucut, terbuat dari bahan alami seperti kayu, bambu, dan daun sagu.",
+    food: "Sagu bakar - camilan tradisional yang terbuat dari tepung sagu, kelapa parut, dan seringkali gula merah atau gula pasir, yang kemudian dipanggang hingga matang.",
+    dance: "Tari Yospan - tarian pergaulan yang enerjik dan ceria, menggambarkan kegembiraan masyarakat Papua.",
+    lore: "Asal-usul Danau Ayamaru - Seorang raksasa menangis karena kesepian, air matanya membentuk danau biru yang indah di tengah hutan. Penduduk percaya, roh sang raksasa masih menjaga ikan-ikan di Danau Ayamaru.",
+    flora_fauna: "Flora khasnya anggrek raksasa dan sagu, dan faunanya burung cenderawasih kuning, kuskus pohon, dan ikan pari manta di Raja Ampat. Hutan hujannya masih sangat alami."
+    ,video:"https://www.youtube.com/embed/cA5quXhYUi8?si=fF04gI0Xeoiy8qAQ"
+    
+  },
+  "South Papua": {
+    description: "Lowland Papuan province with unique Asmat carvings.",
+    home: "Jew House - rumah komunal suku Asmat yang digunakan untuk pertemuan dan upacara adat.",
+    food: "Ulat Sagu - makanan tradisional yang terbuat dari larva kumbang sagu, yang biasanya diolah dengan cara dipanggang atau digoreng hingga renyah.",
+    dance: "Tari Tumbu Tanah - menggambarkan penghormatan pada bumi.",
+    lore: "Putri Seram dan Buaya Sakti - Putri Seram bersahabat dengan seekor buaya putih. Saat desa diserang, buaya itu melindunginya dengan tubuhnya sendiri. Kini, buaya dianggap hewan suci di rawa-rawa Papua Selatan.",
+    flora_fauna: "Wilayah ini punya hutan rawa dan sagu lebat, dengan fauna seperti buaya air asin dan burung kakaktua putih. Banyak flora tumbuh liar di sekitar sungai-sungai besar."
+    ,video:"https://www.youtube.com/embed/FqC839Lyj50?si=mi-2q7VHzFHKA4i7"
+    
+  },
+  "Southwest Papua": {
+    description: "Wilayah baru dengan kekayaan laut dan budaya suku Moi.",
+    home: "Rumah Honai - rumah tradisional suku Moi yang berbentuk bulat dengan atap kerucut, terbuat dari bahan alami seperti kayu, bambu, dan daun sagu.",
+    food: "ikan kuah kuning papeda - hidangan khas Papua yang menggabungkan papeda dengan ikan segar dalam kuah kuning berempah.",
+    dance: "Tari Alen - tarian tradisional suku Moi yang menggambarkan kehidupan sehari-hari dan hubungan harmonis dengan alam.",
+    lore: "Legenda Burung Cenderawasih - Seorang gadis baik hati menolong burung terluka. Sebagai balasannya, burung itu berubah menjadi putri cantik yang terbang ke langit. Dari kisah itu, muncul burung cenderawasih, simbol keindahan dan kemurnian Papua.",
+    flora_fauna: "Flora khasnya pohon sagu dan kelapa, sedangkan faunanya ikan pari manta, cenderawasih merah, dan kura-kura laut. Perairan Misool dan Waigeo menjadi surga keanekaragaman hayati laut."
+    ,video:"https://www.youtube.com/embed/-fZu4FdpDN4?si=LfPH0_OXRnRoo7bw"
+  
+  },
+  "Central Papua": {
+    description: "Wilayah pegunungan dengan suku-suku seperti Dani dan Mee.",
+    home: "Honai - rumah tradisional suku Dani yang berbentuk bulat dengan atap kerucut, terbuat dari bahan alami seperti kayu, bambu, dan daun sagu.",
+    food: "Bakar Batu - makanan yang dimasak dengan cara tradisional menggunakan batu panas.",
+    dance: "Tari Musyoh - menenangkan arwah orang yang meninggal secara tidak wajar, terutama akibat kecelakaan. .",
+    lore: "Legenda Nani Wartabone - Seorang pemuda pemberani membela rakyat dari penjajahan dan menolak tunduk pada keserakahan. Setelah wafat, arwahnya dipercaya menjadi pelindung gunung-gunung Papua Tengah.",
+    flora_fauna: "Flora khasnya lumut gunung dan cemara pegunungan, faunanya burung cenderawasih emas dan kangguru pohon dingiso. Alamnya sejuk dan masih alami."
+    ,video:"https://www.youtube.com/embed/iySsCl5FWpA?si=vd8NerINrmZEtWLV"
+    
+  },
+  "Highland Papua": {
+    description: "Daerah pegunungan tinggi dengan udara dingin.",
+    home: "Ebei - rumah bulat suku Dani yang melambangkan persatuan.",
+    food: "ikan asar - ikan asap khas Papua yang diawetkan dengan cara diasapi menggunakan kayu bakar tradisional.",
+    dance: "Tari isosolo - tarian perang yang menggambarkan keberanian dan semangat juang suku Dani.",
+    lore: "Legenda Honai Sakti - Di lembah tinggi, sebuah rumah honai dipercaya bisa berpindah tempat sendiri saat malam. Konon, rumah itu milik nenek sakti yang menjaga desa dari roh jahat. Siapa pun yang berbuat baik akan diselamatkan olehnya.",
+    flora_fauna: "Daerah ini dipenuhi pohon pinus dan pakis raksasa, dengan fauna seperti kuskus gunung dan burung nuri pegunungan. Flora di lerengnya beradaptasi dengan udara dingin."
+    ,video:"https://www.youtube.com/embed/5E0wBe3EMNc?si=NuSj5tVB4M6qM9-W"
+    
+  },
+  "Papua": {
+    description: "Provinsi paling timur Indonesia, kaya alam dan budaya asli Papua.",
+    home: "Rumah Kariwari - rumah adat khas suku Tobati-Enggros di Papua yang berbentuk limas segi delapan dengan atap kerucut, bukan rumah hunian, melainkan pusat ibadah dan pendidikan untuk remaja laki-laki.",
+    food: "Kue lontar - kue khas Papua yang memiliki rasa manis dan gurih, berbentuk seperti pai susu tapi berukuran lebih besar.",
+    dance: "Tari Perang - melambangkan semangat kepahlawanan dan kegagahan, ditarikan untuk mengobarkan semangat prajurit sebelum atau sesudah berperang.",
+    lore: "Legenda Manokwari - Seorang pemburu mengikuti burung aneh hingga menemukan tanah subur di ujung timur. Burung itu lalu berubah menjadi dewi yang berkata, “Jagalah tanah ini.” Sejak itu, tanah Papua dianggap tanah surga, anugerah terakhir Sang Pencipta.",
+    flora_fauna: "Flora khasnya pohon sagu dan anggrek hutan, sedangkan faunanya burung cenderawasih, kasuari, dan kangguru pohon. Pegunungan Jayawijaya menyimpan keanekaragaman hayati yang luar biasa."    
+    ,video:"https://www.youtube.com/embed/-LbpPKmZ43g?si=2gezxu_aQHghw3yR"
+ 
+  }
+};
+
+      const provinceDetails = details[p.name] || {};
+      document.getElementById('provinceDetails').innerHTML = `
+        <div class="province-card">
+          <h3>${p.id}. ${p.name}</h3>
+          ${provinceDetails.description ? `<p>${provinceDetails.description}</p>` : ''}
+          <p><strong>Traditional House:</strong> ${provinceDetails.home || p.home || "—"}</p>
+          <p><strong>Famous Food:</strong> ${provinceDetails.food || p.food || "—"}</p>
+          <p><strong>Traditional Dance:</strong> ${provinceDetails.dance || p.dance || "—"}</p>
+          <p><strong>Local Folklore:</strong> ${provinceDetails.lore || p.lore || "—"}</p>
+          <p><strong>Notable Flora/Fauna:</strong> ${provinceDetails.flora_fauna || p.flora_fauna || "—"}</p>
+          <iframe width="560" height="315"
+           src="${getYoutubeEmbedUrl(provinceDetails.video || p.video || 'https://www.youtube.com/embed/dQw4w9WgXcQ')}"
+            title="YouTube video player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+          </iframe>
+          </div>`;
+    }
+
+    // Game map (blank — no province markers)
+    const mapGame = L.map('mapGame').setView([-2.5, 118], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'&copy; OpenStreetMap contributors' }).addTo(mapGame);
+
+    // Game logic
+    const FUN_FACTS = [
+      "Indonesia membentang lebih dari 17.000 pulau",
+      "Rendang dari Sumatera Barat terkenal di seluruh dunia",
+      "Komodo hanya hidup di Nusa Tenggara Timur",
+      "Bali dikenal sebagai Pulau Seribu Pura",
+      "Rafflesia arnoldii di Sumatera Barat adalah bunga terbesar di dunia",
+      "Orangutan dapat ditemukan di hutan Kalimantan dan Sumatera",
+      "Kepulauan Banda di Maluku dulu bernilai lebih dari Manhattan karena perdagangan pala",
+      "Borobudur di Jawa Tengah adalah candi Buddha terbesar di dunia",
+      "Raja Ampat di Papua Barat memiliki keanekaragaman laut tertinggi di Bumi",
+      "Tari Saman dari Aceh diakui UNESCO sebagai warisan budaya",
+      "Rumah Tongkonan dari Toraja memiliki atap unik berbentuk perahu",
+      "Pulau Jawa adalah pulau terpadat penduduknya di dunia",
+      "Suku Baduy di Banten masih mempertahankan cara hidup kuno mereka",
+      "Suku Dayak di Kalimantan tinggal di rumah panjang tradisional",
+      "Lembah Baliem di Papua memiliki salah satu masyarakat adat terakhir",
+      "Danau Toba di Sumatera Utara adalah danau vulkanik terbesar di dunia",
+      "Kerajaan Majapahit kuno pernah memerintah dari Jawa Timur",
+      "Yogyakarta masih diperintah oleh Sultannya",
+      "Jakarta dulu dikenal sebagai Batavia pada masa kolonial Belanda",
+      "Taman Laut Bunaken di Sulawesi Utara memiliki keanekaragaman terumbu karang luar biasa",
+      "Suku Mentawai di Sumatera Barat mempertahankan tradisi unik",
+      "Kepulauan Maluku dulunya dikenal sebagai Kepulauan Rempah",
+      "Suku Asmat di Papua terkenal dengan keahlian ukir kayunya",
+      "Pasar terapung Kalimantan Selatan sudah berusia ratusan tahun",
+      "Gunung Tambora di Nusa Tenggara Barat menyebabkan 'Tahun Tanpa Musim Panas'",
+      "Suku Bugis di Sulawesi Selatan adalah pelaut legendaris",
+      "Tari Reog Ponorogo dari Jawa Timur menampilkan topeng singa seberat 50kg",
+      "Suku Toraja di Sulawesi Selatan memiliki tradisi pemakaman yang unik",
+      "Kopi tradisional Aceh termasuk yang paling dihargai di dunia",
+      "Budaya Betawi Jakarta memadukan berbagai pengaruh berbeda",
+      "Taman Nasional Ujung Kulon di Banten adalah habitat terakhir badak Jawa",
+      "Suku Minangkabau di Sumatera Barat menganut sistem matrilineal",
+      "Suku Osing di Banyuwangi memiliki tarian Using yang unik",
+      "Pesut Mahakam adalah lumba-lumba air tawar yang hanya ada di Kalimantan Timur",
+      "Upacara Kasada di Gunung Bromo adalah tradisi melempar sesaji ke kawah gunung berapi"
+    ];
+      const gameState = {
+      round: 1, maxRounds: 15, target: null, guessMarker: null, targetMarker: null,
+      totalPoints: 0, lastPoints: 0, active: false, hintShown: false
+    };
+
+    function updateScoreboard() {
+      document.getElementById('roundNum').textContent = gameState.round;
+      document.getElementById('totalPoints').textContent = gameState.totalPoints;
+      document.getElementById('lastPoints').textContent = gameState.lastPoints;
+    }
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastBody').textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 4500);
+    }
+    function haversine(lat1, lon1, lat2, lon2) {
+      const toRad = d => d * Math.PI / 180, R = 6371;
+      const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function startRound() {
+      if (gameState.round > gameState.maxRounds) { toast("Game over — press End game to reset."); return; }
+      gameState.active = true; gameState.hintShown = false; gameState.lastPoints = 0;
+      gameState.target = PROVINCES[Math.floor(Math.random() * PROVINCES.length)];
+
+      if (gameState.guessMarker) { mapGame.removeLayer(gameState.guessMarker); gameState.guessMarker = null; }
+      if (gameState.targetMarker) { mapGame.removeLayer(gameState.targetMarker); gameState.targetMarker = null; }
+
+      gameState.targetMarker = L.circleMarker([gameState.target.lat, gameState.target.lng], {
+        radius: 8, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0, opacity: 0
+      }).addTo(mapGame);
+
+      // Do not reveal the province name before the player guesses
+      document.getElementById('gameStatus').textContent = `Find the province. Click the map to guess its location.`;
+      document.getElementById('hintText').textContent = '';
+      updateScoreboard();
+    }
+    function endRound(dist) {
+      if (gameState.targetMarker) gameState.targetMarker.setStyle({ opacity: 1, fillOpacity: 1 });
+      let pts = 5;
+      if (dist <= 50) pts = 100; else if (dist <= 100) pts = 80; else if (dist <= 200) pts = 60; else if (dist <= 400) pts = 40; else if (dist <= 800) pts = 20;
+      gameState.lastPoints = pts; gameState.totalPoints += pts; updateScoreboard();
+      toast(`${FUN_FACTS[Math.floor(Math.random()*FUN_FACTS.length)]} (Distance ${dist.toFixed(0)} km, +${pts} pts)`);
+      gameState.round++; gameState.active = false;
+      document.getElementById('gameStatus').textContent = `Round complete. Distance: ${dist.toFixed(0)} km, +${pts} pts.`;
+    }
+    // Guess on the game map only
+    mapGame.on('click', (e) => {
+      if (!gameState.active) return;
+      if (gameState.guessMarker) mapGame.removeLayer(gameState.guessMarker);
+      gameState.guessMarker = L.circleMarker(e.latlng, { radius: 8, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.9 }).addTo(mapGame);
+      const d = haversine(e.latlng.lat, e.latlng.lng, gameState.target.lat, gameState.target.lng);
+      endRound(d);
+    });
+    // Game buttons
+    document.getElementById('startRoundBtn').addEventListener('click', startRound);
+    document.getElementById('endGameBtn').addEventListener('click', () => {
+      gameState.active = false;
+      document.getElementById('gameStatus').textContent = `Game ended. Final score: ${gameState.totalPoints}. Press “Start round” to play again.`;
+      gameState.round = 1; gameState.totalPoints = 0; gameState.lastPoints = 0; gameState.hintShown = false;
+      updateScoreboard();
+      if (gameState.guessMarker) { mapGame.removeLayer(gameState.guessMarker); gameState.guessMarker = null; }
+      if (gameState.targetMarker) { mapGame.removeLayer(gameState.targetMarker); gameState.targetMarker = null; }
+    });
+    document.getElementById('giveHintBtn').addEventListener('click', () => {
+      if (!gameState.active) return;
+      gameState.hintShown = true;
+      const p = gameState.target.name;
+      let hint = "Hint: Think about island groups.";
+const hints = {
+  "Aceh": [
+    "Aceh sering disebut 'Serambi Mekah' karena di sini Islam pertama kali masuk ke Indonesia. Banyak masjid indah dan tradisi unik!",
+    "Rumoh Aceh adalah rumah panggung tinggi, supaya aman dari banjir dan gempa. Seru ya?",
+    "Mie Aceh itu mi pedas dengan daging atau seafood, rasanya mantap!",
+    "Tari Saman: penarinya bergerak cepat dan kompak, seperti robot yang bisa menari bersama!",
+    "Di hutan Aceh, ada orangutan, gajah, dan bunga Rafflesia yang super besar!"
+  ],
+  "North Sumatra": [
+    "Di sini banyak suku, seperti Batak dan Nias. Mereka punya cerita dan lagu yang seru!",
+    "Rumah Bolon itu besar dan beratap melengkung, bisa dihuni banyak keluarga. Asyik buat main petak umpet!",
+    "Saksang: makanan dari daging dengan bumbu khas Batak, rasanya unik!",
+    "Tari Tortor: penari bergerak pelan dan anggun, diiringi musik gondang.",
+    "Ada Danau Toba yang luas banget, dan orangutan Sumatra yang lucu!"
+  ],
+  "West Sumatra": [
+    "Orang Minangkabau di sini mengikuti garis keturunan dari ibu. Mereka suka musyawarah dan damai.",
+    "Rumah Gadang atapnya mirip tanduk kerbau, keren banget!",
+    "Rendang: daging sapi dimasak lama sampai empuk dan gurih.",
+    "Tari Piring: penari menari sambil membawa piring, tapi nggak pernah jatuh!",
+    "Ada bunga Rafflesia yang super besar dan harimau Sumatra yang gagah."
+  ],
+  "Riau": [
+    "Riau adalah tanah Melayu, banyak pantun dan lagu indah.",
+    "Rumah Selaso Jatuh Kembar biasanya dipakai untuk kumpul-kumpul dan ngobrol bersama.",
+    "Asam Pedas Patin: ikan dengan kuah pedas segar, bikin semangat makan!",
+    "Tari Zapin: gerakannya lembut dan sopan, seperti putri dan pangeran.",
+    "Di sini banyak pohon sagu dan hewan lucu seperti macan dahan."
+  ],
+  "Jambi": [
+    "Jambi dulu bagian dari kerajaan Melayu, orangnya ramah dan suka adat.",
+    "Rumah Kajang Leko: rumah panggung dengan ukiran cantik.",
+    "Gulai Tepek Ikan: ikan dengan kuah santan dan rempah, yummy!",
+    "Tari Sekapur Sirih: penari membawa sirih sebagai tanda hormat.",
+    "Ada harimau Sumatra, tapir, dan bunga anggrek yang cantik."
+  ],
+  "South Sumatra": [
+    "Dulu di sini ada Kerajaan Sriwijaya yang hebat!",
+    "Rumah Limas bertingkat lima, seperti rumah di negeri dongeng.",
+    "Pempek: makanan dari ikan dengan saus cuko yang asam dan pedas.",
+    "Tari Gending Sriwijaya: tarian megah seperti putri dan pangeran.",
+    "Ada harimau Sumatra dan buaya yang suka berjemur di rawa."
+  ],
+  "Bengkulu": [
+    "Bengkulu terkenal dengan bunga Rafflesia yang super besar dan langka.",
+    "Rumah Bubungan Lima dipakai untuk musyawarah, seperti rapat keluarga.",
+    "Pendap: ikan dibungkus daun dan dimasak, rasanya unik!",
+    "Tari Andun: tarian ceria untuk anak muda.",
+    "Di sini ada kukang, trenggiling, dan rotan liar di hutan."
+  ],
+  "Lampung": [
+    "Lampung adalah gerbang ke Pulau Jawa, banyak pantai dan kebun kopi.",
+    "Nuwo Sesat: rumah adat untuk berkumpul dan ngobrol.",
+    "Seruit: ikan goreng atau bakar dengan sambal, enak dimakan rame-rame!",
+    "Tari Sigeh Penguten: tarian untuk menyambut tamu.",
+    "Ada gajah Sumatra, penyu belimbing, dan kopi yang harum."
+  ],
+  "Bangka Belitung": [
+    "Di sini banyak pantai cantik dan batu granit besar, seru buat main!",
+    "Rumah Panggung Bangka tinggi supaya aman dari banjir.",
+    "Mie Bangka: mi khas pulau, rasanya gurih.",
+    "Tari Campak: tarian ceria anak muda di pesisir.",
+    "Ada pohon kelapa, ikan pari, dan penyu sisik di laut."
+  ],
+  "Riau Islands": [
+    "Riau Islands punya ribuan pulau kecil, seperti negeri dongeng!",
+    "Rumah Belah Bubung atapnya mirip perahu terbalik.",
+    "Laksa: sup mi dengan bumbu Melayu.",
+    "Tandak: tarian pergaulan yang seru.",
+    "Di lautnya ada dugong, penyu, dan terumbu karang warna-warni."
+  ],
+  "West Java": [
+    "Tanah Sunda terkenal ramah dan suka seni.",
+    "Rumah Julang Ngapak atapnya lebar seperti burung terbang.",
+    "Soto Bandung, Surabi, dan Lotek: makanan sehat dan enak.",
+    "Tari Jaipongan: gerakannya lincah dan penuh semangat.",
+    "Ada macan tutul Jawa dan elang Jawa yang gagah."
+  ],
+  "Jakarta": [
+    "Jakarta adalah ibu kota Indonesia, ramai dan penuh warna!",
+    "Rumah Kebaya atapnya mirip lipatan kebaya, unik banget.",
+    "Kerak Telor dan Soto Betawi: makanan khas yang gurih.",
+    "Tari Topeng Betawi: lucu dan ekspresif, bikin ketawa.",
+    "Ada burung kuntul dan biawak air di sungai kota."
+  ],
+  "Central Java": [
+    "Central Java adalah pusat budaya Jawa, orangnya sopan dan suka filosofi.",
+    "Joglo: rumah dengan atap tinggi bertingkat.",
+    "Lumpia Semarang, Soto Kudus, Nasi Liwet Solo: makanan manis dan gurih.",
+    "Tari Gambyong: gerakannya lembut seperti putri.",
+    "Ada pohon jati, lutung Jawa, dan elang brontok."
+  ],
+  "Yogyakarta": [
+    "Yogyakarta dipimpin Sultan, budayanya keren dan istimewa.",
+    "Joglo Yogyakarta punya banyak ukiran indah.",
+    "Gudeg: makanan dari nangka muda, manis dan lezat.",
+    "Tari Bedhaya: tarian keraton yang lembut dan penuh makna.",
+    "Ada pohon beringin sakral dan kijang kecil di taman."
+  ],
+  "East Java": [
+    "Di sini ada Gunung Bromo dan budaya Madura yang unik.",
+    "Joglo Pencu: rumah dengan atap tinggi, seperti istana.",
+    "Rawon: sup daging hitam dari kluwek.",
+    "Reog Ponorogo: pertunjukan topeng singa besar, keren banget!",
+    "Ada banteng Jawa dan penyu hijau di pantai."
+  ],
+  "Banten": [
+    "Banten punya suku Baduy yang hidup sederhana dan dekat alam.",
+    "Rumah Baduy dibuat tanpa paku, hebat ya!",
+    "Sate Bandeng: ikan bandeng yang dihaluskan dan dibumbui.",
+    "Tari Rampak Bedug: menabuh bedug bersama-sama, seru!",
+    "Ada badak Jawa yang langka di hutan Ujung Kulon."
+  ],
+  "Bali": [
+    "Bali adalah pulau para dewa, penuh pura dan pantai indah.",
+    "Gapura Candi Bentar: gerbang rumah yang cantik dan sakral.",
+    "Lawar dan Babi Guling: makanan khas upacara.",
+    "Tari Kecak: penari duduk melingkar sambil bersuara 'cak-cak-cak'!",
+    "Ada jalak Bali yang langka dan ikan warna-warni di laut."
+  ],
+  "West Nusa Tenggara": [
+    "Di sini ada suku Sasak dan Samawa, budayanya seru!",
+    "Bale Lumbung: rumah tinggi mirip lumbung padi.",
+    "Ayam Taliwang dan Plecing Kangkung: pedas dan segar.",
+    "Tari Gandrung Lombok: tarian kebahagiaan rakyat.",
+    "Ada rusa timor dan kera ekor panjang di hutan."
+  ],
+  "East Nusa Tenggara": [
+    "Wilayahnya kering, tapi punya komodo si naga purba!",
+    "Mbaru Niang: rumah kerucut tinggi dari bambu.",
+    "Se’i: daging asap yang gurih.",
+    "Tari Caci: tarian perang dengan cambuk, seru!",
+    "Ada komodo, pohon lontar, dan burung kakatua kuning."
+  ],
+  "West Kalimantan": [
+    "Di sini ada garis khatulistiwa, jadi panas dan seru!",
+    "Rumah Panjang: bisa dihuni banyak orang, asyik buat main bersama.",
+    "Pengkang: nasi ketan dengan udang kering.",
+    "Tari Monong: tarian untuk tolak bala.",
+    "Ada orangutan, bekantan, dan anggrek hitam di hutan."
+  ],
+  "Central Kalimantan": [
+    "Banyak suku Dayak tinggal di sini, hutan rawa gambutnya luas.",
+    "Betang House: rumah panjang untuk keluarga besar.",
+    "Juhu Singkah: rebung rotan dimasak santan.",
+    "Tari Tambun dan Bungai: tarian pahlawan Dayak.",
+    "Ada orangutan, beruang madu, dan buaya di sungai."
+  ],
+  "South Kalimantan": [
+    "Ada pasar terapung di sungai, seru buat belanja dari perahu!",
+    "Bubungan Tinggi: rumah dengan atap lancip.",
+    "Soto Banjar: sup gurih tanpa santan.",
+    "Baksa Kembang: tarian sambutan dengan bunga.",
+    "Ada bekantan, burung rangkong, dan ikan toman di sungai."
+  ],
+  "East Kalimantan": [
+    "Wilayah kaya sumber alam, banyak suku Dayak.",
+    "Lamin House: rumah panjang penuh ukiran warna-warni.",
+    "Nasi Bekepor: dimasak di atas bara api, unik!",
+    "Tari Gong: diiringi musik gong besar.",
+    "Ada pesut Mahakam, lumba-lumba air tawar yang lucu!"
+  ],
+  "North Kalimantan": [
+    "Provinsi termuda, hutan dan sungainya masih alami.",
+    "Rumah Baloy: rumah yang ramah lingkungan.",
+    "Nasi Subut: nasi sehat dari beras, ubi, dan jagung.",
+    "Tari Jepen: tarian campuran Melayu dan Dayak.",
+    "Ada orangutan, kucing batu, dan elang laut."
+  ],
+  "North Sulawesi": [
+    "Budaya Minahasa dan laut Bunaken yang indah.",
+    "Wale: rumah panggung dengan tangga di tengah.",
+    "Tinutuan: bubur sayur yang sehat.",
+    "Tari Kabasaran: tarian perang pemberani.",
+    "Ada tarsius bermata besar dan terumbu karang warna-warni."
+  ],
+  "Gorontalo": [
+    "Orangnya ramah dan suka musyawarah.",
+    "Dulohupa: rumah untuk rapat dan upacara.",
+    "Binte Biluhuta: sup jagung dengan ikan dan kelapa.",
+    "Tari Dana-Dana: tarian dinamis diiringi musik.",
+    "Ada burung maleo dan penyu hijau di pantai."
+  ],
+  "Central Sulawesi": [
+    "Budaya Kaili dan Tojo Una-Una, hutan dan danau indah.",
+    "Rumah Tambi: bentuk segitiga seperti tenda.",
+    "Kaledo: sup tulang sapi asam dan gurih.",
+    "Tari Dero: tarian kebersamaan, seru buat rame-rame.",
+    "Ada anoa, babirusa, dan burung maleo di hutan."
+  ],
+  "South Sulawesi": [
+    "Wilayah Bugis dan Toraja, pelaut pemberani.",
+    "Tongkonan: rumah kayu beratap melengkung.",
+    "Coto Makassar: sup daging dengan kacang, gurih!",
+    "Tari Pakarena: tarian kesetiaan dan sabar.",
+    "Ada monyet buton dan burung maleo yang unik."
+  ],
+  "West Sulawesi": [
+    "Budaya Mandar, rumah panggung Boyang.",
+    "Jepa: roti sagu khas Mandar, enak buat sarapan.",
+    "Tari Pattudu: gerakan lembut dengan kipas.",
+    "Ada durian liar, kemiri, dan burung rangkong di hutan."
+  ],
+  "Southeast Sulawesi": [
+    "Orang Tolaki dan Buton suka hidup dekat laut.",
+    "Banua Tada: rumah panggung tanpa paku.",
+    "Sinonggi: makanan dari pati sagu, biasanya dimakan dengan lauk.",
+    "Tari Lulo: tarian kebersamaan, bisa ikut ramai-ramai!",
+    "Ada burung nuri merah dan penyu hijau di laut."
+  ],
+  "Maluku": [
+    "Tanah Seribu Pulau, dulu terkenal dengan rempah-rempah.",
+    "Baileo: rumah panggung besar untuk acara adat.",
+    "Papeda: makanan dari sagu, kenyal dan unik.",
+    "Tari Cakalele: tarian perang penuh semangat.",
+    "Ada pala, cengkeh, ikan tuna, dan burung kakatua raja."
+  ],
+  "North Maluku": [
+    "Wilayah kepulauan rempah, budaya Ternate dan Tidore.",
+    "Sasadu: rumah adat suku Sahu, bentuknya unik.",
+    "Gohu Ikan: ikan mentah dengan bumbu, seperti sashimi!",
+    "Tari Soya-Soya: tarian perang melawan penjajah.",
+    "Ada burung bidadari Halmahera dan pohon pala."
+  ],
+  "West Papua": [
+    "Alamnya kaya, banyak suku dan budaya menarik.",
+    "Honai: rumah bulat dengan atap kerucut, seperti rumah Hobbit!",
+    "Sagu bakar: camilan tradisional dari sagu.",
+    "Tari Yospan: tarian ceria dan penuh semangat.",
+    "Ada burung cenderawasih kuning dan ikan pari manta di laut."
+  ],
+  "Central Papua": [
+    "Wilayah pegunungan, banyak suku unik.",
+    "Honai: rumah bulat dari kayu dan jerami.",
+    "Bakar Batu: masak makanan dengan batu panas, seru banget!",
+    "Tari Musyoh: tarian untuk menenangkan arwah.",
+    "Ada kangguru pohon dan burung cenderawasih emas."
+  ],
+  "Highland Papua": [
+    "Daerah pegunungan tinggi, udaranya dingin.",
+    "Ebei: rumah bulat suku Dani, hangat di dalam.",
+    "Babati: makanan khas pegunungan.",
+    "Tari isosolok: tarian perang yang berani.",
+    "Ada pinus, pakis raksasa, dan burung nuri pegunungan."
+  ],
+  "South Papua": [
+    "Wilayah rawa, suku Asmat terkenal dengan ukiran kayu.",
+    "Jew House: rumah komunal untuk berkumpul.",
+    "Ulat Sagu: makanan dari larva sagu, berani coba?",
+    "Tari Tumbu Tanah: tarian penghormatan untuk bumi.",
+    "Ada buaya air asin dan burung kakaktua putih di rawa."
+  ],
+  "Southwest Papua": [
+    "Wilayah baru, lautnya kaya ikan dan terumbu karang.",
+    "Honai: rumah bulat suku Moi, nyaman dan hangat.",
+    "Ikan kuah kuning papeda: makanan khas Papua.",
+    "Tari Alen: tarian tentang kehidupan sehari-hari.",
+    "Ada cenderawasih merah dan ikan pari manta di laut."
+  ],
+  "Papua": [
+    "Provinsi paling timur, banyak budaya asli Papua.",
+    "Kariwari: rumah adat berbentuk limas segi delapan.",
+    "Kue lontar: pai susu besar, manis dan gurih.",
+    "Tari Perang: tarian semangat kepahlawanan.",
+    "Ada burung cenderawasih, kasuari, dan kangguru pohon."
+  ]
+};
+
+      if (hints[p]) {
+        // Randomly select one of the 5 hints
+        hint = hints[p][Math.floor(Math.random() * hints[p].length)];
+      }
+      document.getElementById('hintText').textContent = hint;
+    });
+  </script>
+</body>
+</html>
